@@ -1,11 +1,11 @@
 package com.music42.swiftyprotein.ui.proteinview
 
 import com.google.android.filament.Engine
-import com.google.android.filament.RenderableManager
 import com.music42.swiftyprotein.data.model.Atom
 import com.music42.swiftyprotein.data.model.Ligand
 import com.music42.swiftyprotein.util.CpkColors
 import dev.romainguy.kotlin.math.Float3
+import dev.romainguy.kotlin.math.Quaternion
 import dev.romainguy.kotlin.math.normalize
 import dev.romainguy.kotlin.math.cross
 import dev.romainguy.kotlin.math.dot
@@ -13,10 +13,11 @@ import io.github.sceneview.geometries.Cylinder
 import io.github.sceneview.geometries.Sphere
 import io.github.sceneview.loaders.MaterialLoader
 import io.github.sceneview.math.Position
-import io.github.sceneview.math.Rotation
 import io.github.sceneview.node.MeshNode
 import io.github.sceneview.node.Node
 import kotlin.math.acos
+import kotlin.math.cos
+import kotlin.math.sin
 import kotlin.math.sqrt
 
 
@@ -132,7 +133,7 @@ object MoleculeSceneBuilder {
                     materialInstance = material
                 ).apply {
                     position = Position(mid.x, mid.y, mid.z)
-                    rotation = cylinderRotation(diff, length)
+                    quaternion = cylinderQuaternion(diff)
                 }
 
                 parentNode.addChildNode(meshNode)
@@ -142,54 +143,18 @@ object MoleculeSceneBuilder {
         return parentNode to atomNodeMap
     }
 
-    private fun cylinderRotation(direction: Float3, length: Float): Rotation {
+    private fun cylinderQuaternion(direction: Float3): Quaternion {
         val dir = normalize(direction)
         val up = Float3(0f, 1f, 0f)
 
-        val dotProduct = dot(up, dir)
-        if (dotProduct > 0.9999f) return Rotation(0f, 0f, 0f)
-        if (dotProduct < -0.9999f) return Rotation(180f, 0f, 0f)
+        val d = dot(up, dir)
+        if (d > 0.9999f) return Quaternion()
+        if (d < -0.9999f) return Quaternion(0f, 0f, 1f, 0f)
 
         val axis = normalize(cross(up, dir))
-        val angle = Math.toDegrees(acos(dotProduct.coerceIn(-1f, 1f)).toDouble()).toFloat()
+        val halfAngle = acos(d.coerceIn(-1f, 1f)) / 2f
+        val s = sin(halfAngle)
 
-        return axisAngleToEuler(axis, angle)
-    }
-
-    private fun axisAngleToEuler(axis: Float3, angleDeg: Float): Rotation {
-        val angle = Math.toRadians(angleDeg.toDouble())
-        val c = kotlin.math.cos(angle).toFloat()
-        val s = kotlin.math.sin(angle).toFloat()
-        val t = 1f - c
-
-        val x = axis.x
-        val y = axis.y
-        val z = axis.z
-
-        val m00 = t * x * x + c
-        val m01 = t * x * y - s * z
-        val m02 = t * x * z + s * y
-        val m10 = t * x * y + s * z
-        val m11 = t * y * y + c
-        val m12 = t * y * z - s * x
-        val m20 = t * x * z - s * y
-        val m21 = t * y * z + s * x
-        val m22 = t * z * z + c
-
-        val pitch: Float
-        val yaw: Float
-        val roll: Float
-
-        if (m02 < 0.9999f && m02 > -0.9999f) {
-            yaw = Math.toDegrees(kotlin.math.asin(m02.coerceIn(-1f, 1f)).toDouble()).toFloat()
-            pitch = Math.toDegrees(kotlin.math.atan2(-m12.toDouble(), m22.toDouble())).toFloat()
-            roll = Math.toDegrees(kotlin.math.atan2(-m01.toDouble(), m00.toDouble())).toFloat()
-        } else {
-            yaw = if (m02 > 0) 90f else -90f
-            pitch = Math.toDegrees(kotlin.math.atan2(m10.toDouble(), m11.toDouble())).toFloat()
-            roll = 0f
-        }
-
-        return Rotation(pitch, yaw, roll)
+        return Quaternion(axis.x * s, axis.y * s, axis.z * s, cos(halfAngle))
     }
 }

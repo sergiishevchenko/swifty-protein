@@ -7,6 +7,7 @@ import com.music42.swiftyprotein.data.model.Atom
 import com.music42.swiftyprotein.data.model.Ligand
 import com.music42.swiftyprotein.data.repository.LigandRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -47,7 +48,13 @@ class ProteinViewViewModel @Inject constructor(
     private fun fetchLigand(ligandId: String) {
         viewModelScope.launch {
             _uiState.update { it.copy(isLoading = true, errorMessage = null) }
+            val startMs = System.currentTimeMillis()
             val result = ligandRepository.fetchLigand(ligandId)
+            val elapsedMs = System.currentTimeMillis() - startMs
+            val minVisibleMs = 350L
+            if (elapsedMs < minVisibleMs) {
+                delay(minVisibleMs - elapsedMs)
+            }
             result.fold(
                 onSuccess = { ligand ->
                     _uiState.update { it.copy(isLoading = false, ligand = ligand) }

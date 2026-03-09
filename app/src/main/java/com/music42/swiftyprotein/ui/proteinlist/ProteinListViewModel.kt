@@ -62,24 +62,11 @@ class ProteinListViewModel @Inject constructor(
     fun onLigandClick(ligandId: String) {
         if (_uiState.value.loadingLigandId != null) return
 
-        _uiState.update { it.copy(loadingLigandId = ligandId, errorMessage = null) }
-
-        viewModelScope.launch {
-            val result = ligandRepository.fetchLigand(ligandId)
-            result.fold(
-                onSuccess = {
-                    _uiState.update {
-                        it.copy(loadingLigandId = null, navigateToLigand = ligandId)
-                    }
-                },
-                onFailure = { error ->
-                    _uiState.update {
-                        it.copy(
-                            loadingLigandId = null,
-                            errorMessage = "Could not load ligand $ligandId:\n${error.localizedMessage}"
-                        )
-                    }
-                }
+        _uiState.update {
+            it.copy(
+                loadingLigandId = null,
+                errorMessage = null,
+                navigateToLigand = ligandId
             )
         }
     }

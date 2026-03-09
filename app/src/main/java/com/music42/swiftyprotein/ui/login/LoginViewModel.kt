@@ -94,7 +94,23 @@ class LoginViewModel @Inject constructor(
     }
 
     fun onBiometricSuccess() {
-        _uiState.update { it.copy(isAuthenticated = true) }
+        val username = _uiState.value.username.trim()
+        if (username.isBlank()) {
+            _uiState.update {
+                it.copy(errorMessage = "Enter username before fingerprint login.")
+            }
+            return
+        }
+        viewModelScope.launch {
+            val exists = authRepository.userExists(username)
+            if (exists) {
+                _uiState.update { it.copy(isAuthenticated = true, errorMessage = null) }
+            } else {
+                _uiState.update {
+                    it.copy(errorMessage = "User not found. Register or enter a valid username.")
+                }
+            }
+        }
     }
 
     fun onBiometricFailure(message: String) {

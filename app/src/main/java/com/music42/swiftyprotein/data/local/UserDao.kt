@@ -17,4 +17,7 @@ interface UserDao {
 
     @Insert(onConflict = OnConflictStrategy.ABORT)
     suspend fun insert(user: User)
+
+    @Query("UPDATE users SET passwordHash = :passwordHash WHERE id = :id")
+    suspend fun updatePasswordHash(id: Long, passwordHash: String)
 }

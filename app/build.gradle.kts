@@ -89,4 +89,10 @@ dependencies {
 
     // Coroutines
     implementation(libs.kotlinx.coroutines.android)
+
+    // Security (password hashing)
+    implementation(libs.bcrypt)
+
+    // Preferences
+    implementation(libs.androidx.datastore.preferences)
 }

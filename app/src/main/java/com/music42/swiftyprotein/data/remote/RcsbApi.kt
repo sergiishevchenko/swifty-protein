@@ -9,7 +9,7 @@ import retrofit2.http.Streaming
 interface RcsbApi {
 
     @Streaming
-    @GET("ligands/download/{id}.cif")
+    @GET("ligands/view/{id}.cif")
     suspend fun getLigandCif(@Path("id") ligandId: String): Response<ResponseBody>
 
     companion object {

@@ -1,5 +1,11 @@
 package com.music42.swiftyprotein.ui.proteinlist
 
+import androidx.compose.animation.animateColorAsState
+import androidx.compose.animation.core.Spring
+import androidx.compose.animation.core.spring
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.animateContentSize
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -13,6 +19,9 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Clear
 import androidx.compose.material.icons.filled.Search
+import androidx.compose.material.icons.filled.Settings
+import androidx.compose.material.icons.filled.Star
+import androidx.compose.material.icons.filled.StarBorder
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
@@ -37,6 +46,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
@@ -45,6 +55,8 @@ import androidx.hilt.navigation.compose.hiltViewModel
 @Composable
 fun ProteinListScreen(
     onLigandSelected: (String) -> Unit,
+    onOpenFavorites: () -> Unit,
+    onOpenSettings: () -> Unit,
     viewModel: ProteinListViewModel = hiltViewModel()
 ) {
     val uiState by viewModel.uiState.collectAsState()
@@ -60,6 +72,14 @@ fun ProteinListScreen(
         topBar = {
             TopAppBar(
                 title = { Text("Ligands") },
+                actions = {
+                    IconButton(onClick = onOpenFavorites) {
+                        Icon(Icons.Default.Star, contentDescription = "Favorites")
+                    }
+                    IconButton(onClick = onOpenSettings) {
+                        Icon(Icons.Default.Settings, contentDescription = "Settings")
+                    }
+                },
                 colors = TopAppBarDefaults.topAppBarColors(
                     containerColor = MaterialTheme.colorScheme.surface
                 )
@@ -118,6 +138,8 @@ fun ProteinListScreen(
                             LigandItem(
                                 ligandId = ligandId,
                                 isLoading = uiState.loadingLigandId == ligandId,
+                                isFavorite = uiState.favoriteIds.contains(ligandId),
+                                onToggleFavorite = { viewModel.onToggleFavorite(ligandId) },
                                 onClick = { viewModel.onLigandClick(ligandId) }
                             )
                             Spacer(modifier = Modifier.size(8.dp))
@@ -173,15 +195,33 @@ fun ProteinListScreen(
 private fun LigandItem(
     ligandId: String,
     isLoading: Boolean,
+    isFavorite: Boolean,
+    onToggleFavorite: () -> Unit,
     onClick: () -> Unit
 ) {
+    val containerColor by animateColorAsState(
+        targetValue = if (isLoading) MaterialTheme.colorScheme.surfaceVariant else MaterialTheme.colorScheme.surface,
+        animationSpec = tween(durationMillis = 220),
+        label = "ligand_container"
+    )
+    val starScale by animateFloatAsState(
+        targetValue = if (isFavorite) 1.12f else 1.0f,
+        animationSpec = spring(stiffness = Spring.StiffnessMedium),
+        label = "favorite_scale"
+    )
+    val starTint by animateColorAsState(
+        targetValue = if (isFavorite) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
+        animationSpec = tween(durationMillis = 220),
+        label = "favorite_tint"
+    )
     Card(
         modifier = Modifier
             .fillMaxWidth()
             .clip(androidx.compose.foundation.shape.RoundedCornerShape(16.dp))
-            .clickable(enabled = !isLoading, onClick = onClick),
+            .clickable(enabled = !isLoading, onClick = onClick)
+            .animateContentSize(),
         colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.surface
+            containerColor = containerColor
         ),
         elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
     ) {
@@ -194,6 +234,20 @@ private fun LigandItem(
                 text = ligandId,
                 fontWeight = FontWeight.SemiBold
             )
+            IconButton(
+                onClick = onToggleFavorite,
+                modifier = Modifier.align(Alignment.CenterEnd)
+            ) {
+                Icon(
+                    imageVector = if (isFavorite) Icons.Default.Star else Icons.Default.StarBorder,
+                    contentDescription = if (isFavorite) "Unfavorite" else "Favorite",
+                    tint = starTint,
+                    modifier = Modifier.graphicsLayer {
+                        scaleX = starScale
+                        scaleY = starScale
+                    }
+                )
+            }
             if (isLoading) {
                 CircularProgressIndicator(
                     modifier = Modifier

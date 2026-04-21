@@ -2,12 +2,12 @@ package com.music42.swiftyprotein.ui.proteinlist
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.music42.swiftyprotein.data.repository.FavoritesRepository
 import com.music42.swiftyprotein.data.repository.LigandRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
-import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import javax.inject.Inject
@@ -19,12 +19,14 @@ data class ProteinListUiState(
     val isLoading: Boolean = false,
     val loadingLigandId: String? = null,
     val errorMessage: String? = null,
-    val navigateToLigand: String? = null
+    val navigateToLigand: String? = null,
+    val favoriteIds: Set<String> = emptySet()
 )
 
 @HiltViewModel
 class ProteinListViewModel @Inject constructor(
-    private val ligandRepository: LigandRepository
+    private val ligandRepository: LigandRepository,
+    private val favoritesRepository: FavoritesRepository
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(ProteinListUiState())
@@ -32,6 +34,7 @@ class ProteinListViewModel @Inject constructor(
 
     init {
         loadLigands()
+        observeFavorites()
     }
 
     private fun loadLigands() {
@@ -48,6 +51,14 @@ class ProteinListViewModel @Inject constructor(
         }
     }
 
+    private fun observeFavorites() {
+        viewModelScope.launch {
+            favoritesRepository.observeFavoriteIds().collect { ids ->
+                _uiState.update { it.copy(favoriteIds = ids.toSet()) }
+            }
+        }
+    }
+
     fun onSearchQueryChange(query: String) {
         _uiState.update { state ->
             val filtered = if (query.isBlank()) {
@@ -60,19 +71,44 @@ class ProteinListViewModel @Inject constructor(
     }
 
     fun onLigandClick(ligandId: String) {
-        if (_uiState.value.loadingLigandId != null) return
+        val state = _uiState.value
+        if (state.loadingLigandId != null) return
 
         _uiState.update {
             it.copy(
-                loadingLigandId = null,
+                loadingLigandId = ligandId,
                 errorMessage = null,
-                navigateToLigand = ligandId
+                navigateToLigand = null
+            )
+        }
+
+        // Strict per subject: validate that the ligand can be fetched + parsed before navigation.
+        viewModelScope.launch {
+            val result = ligandRepository.fetchLigand(ligandId)
+            result.fold(
+                onSuccess = {
+                    _uiState.update { it.copy(loadingLigandId = null, navigateToLigand = ligandId) }
+                },
+                onFailure = { e ->
+                    _uiState.update {
+                        it.copy(
+                            loadingLigandId = null,
+                            errorMessage = e.localizedMessage ?: "Unknown error"
+                        )
+                    }
+                }
             )
         }
     }
 
     fun onNavigated() {
         _uiState.update { it.copy(navigateToLigand = null) }
+    }
+
+    fun onToggleFavorite(ligandId: String) {
+        viewModelScope.launch {
+            favoritesRepository.toggleFavorite(ligandId)
+        }
     }
 
     fun dismissError() {

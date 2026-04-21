@@ -3,6 +3,7 @@ package com.music42.swiftyprotein.di
 import android.content.Context
 import androidx.room.Room
 import com.music42.swiftyprotein.data.local.AppDatabase
+import com.music42.swiftyprotein.data.local.FavoritesDao
 import com.music42.swiftyprotein.data.local.UserDao
 import com.music42.swiftyprotein.data.remote.RcsbApi
 import dagger.Module
@@ -27,12 +28,19 @@ object AppModule {
             context,
             AppDatabase::class.java,
             "swifty_protein_db"
-        ).build()
+        )
+            .addMigrations(AppDatabase.MIGRATION_1_2)
+            .build()
     }
 
     @Provides
     fun provideUserDao(database: AppDatabase): UserDao {
         return database.userDao()
+    }
+
+    @Provides
+    fun provideFavoritesDao(database: AppDatabase): FavoritesDao {
+        return database.favoritesDao()
     }
 
     @Provides

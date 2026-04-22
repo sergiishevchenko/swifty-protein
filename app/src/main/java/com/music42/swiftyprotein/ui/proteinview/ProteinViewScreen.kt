@@ -652,10 +652,11 @@ private fun MoleculeViewer(
             val isSelected = selectedAtom != null && atom.id == selectedAtom.id
             val base = com.music42.swiftyprotein.util.CpkColors.getColor(atom.element)
             val color = if (isSelected) {
+                val t = 0.45f
                 Color(
-                    (base.red * 1.5f).coerceIn(0f, 1f),
-                    (base.green * 1.5f).coerceIn(0f, 1f),
-                    (base.blue * 1.5f).coerceIn(0f, 1f),
+                    base.red + (1f - base.red) * t,
+                    base.green + (1f - base.green) * t,
+                    base.blue + (1f - base.blue) * t,
                     1f
                 )
             } else {

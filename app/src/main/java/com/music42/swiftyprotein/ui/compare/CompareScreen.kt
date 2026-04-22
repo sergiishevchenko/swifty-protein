@@ -190,7 +190,7 @@ private fun SimpleMoleculeViewer(
     Scene(
         modifier = modifier,
         engine = engine,
-        isOpaque = true,
+        isOpaque = false,
         materialLoader = materialLoader,
         cameraNode = cameraNode,
         cameraManipulator = cameraManipulator,

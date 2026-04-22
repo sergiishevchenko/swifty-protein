@@ -1,6 +1,7 @@
 package com.music42.swiftyprotein.ui.proteinview
 
 import android.media.MediaRecorder
+import androidx.compose.ui.viewinterop.AndroidView
 import android.media.projection.MediaProjection
 import android.media.projection.MediaProjectionManager
 import android.app.Activity
@@ -13,7 +14,7 @@ import android.view.MotionEvent
 import android.view.PixelCopy
 import android.hardware.display.DisplayManager
 import android.hardware.display.VirtualDisplay
-import android.graphics.PixelFormat
+import android.util.Log
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -56,6 +57,7 @@ import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
@@ -72,8 +74,11 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.graphics.nativeCanvas
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.IntOffset
+import androidx.compose.ui.unit.IntSize
+import androidx.compose.ui.unit.toSize
 import androidx.core.content.FileProvider
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
@@ -146,7 +151,7 @@ fun ProteinViewScreen(
     }
 
     Scaffold(
-        containerColor = sceneTint,
+        containerColor = Color.Transparent,
         topBar = {
             TopAppBar(
                 title = {
@@ -162,41 +167,6 @@ fun ProteinViewScreen(
                     }
                 },
                 actions = {
-                    IconButton(
-                        onClick = {
-                            if (isRecording) return@IconButton
-                            val activity = context as? Activity ?: return@IconButton
-                            val mgr = activity.getSystemService(Context.MEDIA_PROJECTION_SERVICE) as MediaProjectionManager
-                            projectionLauncher.launch(mgr.createScreenCaptureIntent())
-                        }
-                    ) {
-                        Icon(
-                            Icons.Default.Videocam,
-                            contentDescription = "Record video",
-                            tint = if (isRecording) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.primary
-                        )
-                    }
-                    IconButton(onClick = { viewModel.setMeasurementMode(!uiState.measurementMode) }) {
-                        Icon(
-                            Icons.Default.Straighten,
-                            contentDescription = "Toggle measurement mode",
-                            tint = if (uiState.measurementMode)
-                                MaterialTheme.colorScheme.tertiary
-                            else
-                                MaterialTheme.colorScheme.primary
-                        )
-                    }
-                    IconButton(onClick = { viewModel.setShowAtomLabels(!uiState.showAtomLabels) }) {
-                        Icon(
-                            Icons.Default.Label,
-                            contentDescription = "Toggle atom labels"
-                        )
-                    }
-                    IconButton(onClick = {
-                        showShareFormatDialog = true
-                    }) {
-                        Icon(Icons.Default.Share, contentDescription = "Share")
-                    }
                 },
                 colors = TopAppBarDefaults.topAppBarColors(
                     containerColor = MaterialTheme.colorScheme.surface,
@@ -211,7 +181,6 @@ fun ProteinViewScreen(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(innerPadding)
-                .background(sceneTint)
         ) {
             when {
                 uiState.isLoading -> {
@@ -269,6 +238,11 @@ fun ProteinViewScreen(
                 }
 
                 uiState.ligand != null -> {
+                    LaunchedEffect(uiState.ligandId, uiState.ligand?.atoms?.size, uiState.ligand?.bonds?.size) {
+                        val a = uiState.ligand?.atoms?.size ?: -1
+                        val b = uiState.ligand?.bonds?.size ?: -1
+                        Log.i("SwiftyProtein", "ProteinView ready id=${uiState.ligandId} atoms=$a bonds=$b")
+                    }
                     Box(
                         modifier = Modifier
                             .fillMaxSize()
@@ -298,65 +272,102 @@ fun ProteinViewScreen(
                                 .clip(RoundedCornerShape(24.dp))
                         )
 
-                        AnimatedVisibility(
-                            visible = uiState.measurementMode,
-                            enter = fadeIn(),
-                            exit = fadeOut(),
-                            modifier = Modifier
-                                .align(Alignment.TopCenter)
-                                .padding(top = 12.dp)
-                        ) {
-                            Card(
-                                shape = RoundedCornerShape(999.dp),
-                                colors = CardDefaults.cardColors(
-                                    containerColor = MaterialTheme.colorScheme.tertiaryContainer
-                                ),
-                                elevation = CardDefaults.cardElevation(defaultElevation = 8.dp)
-                            ) {
-                                Text(
-                                    text = "MEASURE MODE",
-                                    modifier = Modifier.padding(horizontal = 14.dp, vertical = 8.dp),
-                                    style = MaterialTheme.typography.labelLarge,
-                                    color = MaterialTheme.colorScheme.onTertiaryContainer,
-                                    fontWeight = FontWeight.SemiBold
-                                )
-                            }
-                        }
-
-                        if (uiState.selectedAtom != null) {
-                            androidx.compose.ui.window.Popup(
-                                alignment = Alignment.TopStart,
-                                onDismissRequest = { viewModel.dismissAtomInfo() }
-                            ) {
-                                Box(modifier = Modifier.padding(start = 8.dp, top = 8.dp)) {
-                                    AtomTooltip(
-                                        atom = uiState.selectedAtom!!,
-                                        onDismiss = viewModel::dismissAtomInfo
-                                    )
-                                }
-                            }
-                        }
-
-                        if (uiState.selectedBond != null) {
-                            androidx.compose.ui.window.Popup(
-                                alignment = Alignment.TopStart,
-                                onDismissRequest = { viewModel.dismissBondInfo() }
-                            ) {
-                                Box(modifier = Modifier.padding(start = 8.dp, top = 8.dp)) {
-                                    BondTooltip(
-                                        bond = uiState.selectedBond!!,
-                                        ligand = uiState.ligand!!,
-                                        onDismiss = viewModel::dismissBondInfo
-                                    )
-                                }
-                            }
-                        }
-
                         androidx.compose.ui.window.Popup(alignment = Alignment.TopEnd) {
                             Column(
                                 modifier = Modifier.padding(end = 8.dp, top = 8.dp),
                                 horizontalAlignment = Alignment.CenterHorizontally
                             ) {
+                                Card(
+                                    modifier = Modifier.size(42.dp),
+                                    shape = CircleShape,
+                                    colors = CardDefaults.cardColors(
+                                        containerColor = MaterialTheme.colorScheme.surface
+                                    ),
+                                    elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
+                                ) {
+                                    IconButton(
+                                        onClick = {
+                                            if (isRecording) return@IconButton
+                                            val activity = context as? Activity ?: return@IconButton
+                                            val mgr = activity.getSystemService(Context.MEDIA_PROJECTION_SERVICE) as MediaProjectionManager
+                                            projectionLauncher.launch(mgr.createScreenCaptureIntent())
+                                        },
+                                        modifier = Modifier.fillMaxSize()
+                                    ) {
+                                        Icon(
+                                            Icons.Default.Videocam,
+                                            contentDescription = "Record video",
+                                            tint = if (isRecording) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.primary
+                                        )
+                                    }
+                                }
+                                Spacer(modifier = Modifier.height(8.dp))
+                                Card(
+                                    modifier = Modifier.size(42.dp),
+                                    shape = CircleShape,
+                                    colors = CardDefaults.cardColors(
+                                        containerColor = MaterialTheme.colorScheme.surface
+                                    ),
+                                    elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
+                                ) {
+                                    IconButton(
+                                        onClick = { viewModel.setMeasurementMode(!uiState.measurementMode) },
+                                        modifier = Modifier.fillMaxSize()
+                                    ) {
+                                        Icon(
+                                            Icons.Default.Straighten,
+                                            contentDescription = "Toggle measurement mode",
+                                            tint = if (uiState.measurementMode)
+                                                MaterialTheme.colorScheme.tertiary
+                                            else
+                                                MaterialTheme.colorScheme.primary
+                                        )
+                                    }
+                                }
+                                Spacer(modifier = Modifier.height(8.dp))
+                                Card(
+                                    modifier = Modifier.size(42.dp),
+                                    shape = CircleShape,
+                                    colors = CardDefaults.cardColors(
+                                        containerColor = MaterialTheme.colorScheme.surface
+                                    ),
+                                    elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
+                                ) {
+                                    IconButton(
+                                        onClick = { viewModel.setShowAtomLabels(!uiState.showAtomLabels) },
+                                        modifier = Modifier.fillMaxSize()
+                                    ) {
+                                        Icon(
+                                            Icons.Default.Label,
+                                            contentDescription = "Toggle atom labels",
+                                            tint = if (uiState.showAtomLabels)
+                                                MaterialTheme.colorScheme.tertiary
+                                            else
+                                                MaterialTheme.colorScheme.primary
+                                        )
+                                    }
+                                }
+                                Spacer(modifier = Modifier.height(8.dp))
+                                Card(
+                                    modifier = Modifier.size(42.dp),
+                                    shape = CircleShape,
+                                    colors = CardDefaults.cardColors(
+                                        containerColor = MaterialTheme.colorScheme.surface
+                                    ),
+                                    elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
+                                ) {
+                                    IconButton(
+                                        onClick = { showShareFormatDialog = true },
+                                        modifier = Modifier.fillMaxSize()
+                                    ) {
+                                        Icon(
+                                            Icons.Default.Share,
+                                            contentDescription = "Share",
+                                            tint = MaterialTheme.colorScheme.primary
+                                        )
+                                    }
+                                }
+                                Spacer(modifier = Modifier.height(8.dp))
                                 Card(
                                     modifier = Modifier.size(42.dp),
                                     shape = CircleShape,
@@ -393,6 +404,90 @@ fun ProteinViewScreen(
                                             tint = MaterialTheme.colorScheme.onPrimary
                                         )
                                     }
+                                }
+                            }
+                        }
+
+                        androidx.compose.ui.window.Popup(alignment = Alignment.TopCenter) {
+                            Column(
+                                horizontalAlignment = Alignment.CenterHorizontally,
+                                modifier = Modifier.padding(top = 12.dp)
+                            ) {
+                                AnimatedVisibility(
+                                    visible = uiState.measurementMode,
+                                    enter = fadeIn(),
+                                    exit = fadeOut()
+                                ) {
+                                    Card(
+                                        shape = RoundedCornerShape(999.dp),
+                                        colors = CardDefaults.cardColors(
+                                            containerColor = MaterialTheme.colorScheme.tertiaryContainer
+                                        ),
+                                        elevation = CardDefaults.cardElevation(defaultElevation = 8.dp)
+                                    ) {
+                                        Text(
+                                            text = "MEASURE MODE",
+                                            modifier = Modifier
+                                                .clickable { viewModel.setMeasurementMode(false) }
+                                                .padding(horizontal = 14.dp, vertical = 8.dp),
+                                            style = MaterialTheme.typography.labelLarge,
+                                            color = MaterialTheme.colorScheme.onTertiaryContainer,
+                                            fontWeight = FontWeight.SemiBold
+                                        )
+                                    }
+                                }
+                                AnimatedVisibility(
+                                    visible = uiState.showAtomLabels,
+                                    enter = fadeIn(),
+                                    exit = fadeOut()
+                                ) {
+                                    Card(
+                                        shape = RoundedCornerShape(999.dp),
+                                        colors = CardDefaults.cardColors(
+                                            containerColor = MaterialTheme.colorScheme.secondaryContainer
+                                        ),
+                                        elevation = CardDefaults.cardElevation(defaultElevation = 8.dp),
+                                        modifier = Modifier.padding(top = 8.dp)
+                                    ) {
+                                        Text(
+                                            text = "LABELS MODE",
+                                            modifier = Modifier
+                                                .clickable { viewModel.setShowAtomLabels(false) }
+                                                .padding(horizontal = 14.dp, vertical = 8.dp),
+                                            style = MaterialTheme.typography.labelLarge,
+                                            color = MaterialTheme.colorScheme.onSecondaryContainer,
+                                            fontWeight = FontWeight.SemiBold
+                                        )
+                                    }
+                                }
+                            }
+                        }
+
+                        if (uiState.selectedAtom != null) {
+                            androidx.compose.ui.window.Popup(
+                                alignment = Alignment.TopStart,
+                                onDismissRequest = { viewModel.dismissAtomInfo() }
+                            ) {
+                                Box(modifier = Modifier.padding(start = 8.dp, top = 8.dp)) {
+                                    AtomTooltip(
+                                        atom = uiState.selectedAtom!!,
+                                        onDismiss = viewModel::dismissAtomInfo
+                                    )
+                                }
+                            }
+                        }
+
+                        if (uiState.selectedBond != null) {
+                            androidx.compose.ui.window.Popup(
+                                alignment = Alignment.TopStart,
+                                onDismissRequest = { viewModel.dismissBondInfo() }
+                            ) {
+                                Box(modifier = Modifier.padding(start = 8.dp, top = 8.dp)) {
+                                    BondTooltip(
+                                        bond = uiState.selectedBond!!,
+                                        ligand = uiState.ligand!!,
+                                        onDismiss = viewModel::dismissBondInfo
+                                    )
                                 }
                             }
                         }
@@ -518,38 +613,58 @@ private fun MoleculeViewer(
     var focusOffset by remember(ligand.id) { mutableStateOf(Float3(0f, 0f, 0f)) }
     var labelPositions by remember { mutableStateOf<Map<String, Offset>>(emptyMap()) }
     var labelFrameCounter by remember { mutableIntStateOf(0) }
+    val sceneViewWindowXY = remember { intArrayOf(0, 0) }
+    var sceneViewSizePx by remember { mutableStateOf(IntSize.Zero) }
 
-    val (parentNode, atomNodeMap) = remember(ligand, mode, selectedAtom?.element, focusOffset) {
+    LaunchedEffect(showAtomLabels) {
+        labelFrameCounter = 0
+        if (!showAtomLabels && labelPositions.isNotEmpty()) {
+            labelPositions = emptyMap()
+        }
+    }
+
+    val (parentNode, atomNodeMap) = remember(ligand, mode, selectedAtom?.element) {
         MoleculeSceneBuilder.build(
             engine = engine,
             materialLoader = materialLoader,
             ligand = ligand,
             mode = mode,
             highlightElement = selectedAtom?.element,
-            centerOffset = focusOffset
+            centerOffset = Float3(0f, 0f, 0f)
         )
+    }
+    LaunchedEffect(ligand.id, mode, selectedAtom?.element, atomNodeMap.size) {
+        Log.i("SwiftyProtein", "Scene built id=${ligand.id} mode=$mode nodes=${atomNodeMap.size}")
     }
 
     val tapDownPos = remember { floatArrayOf(0f, 0f) }
     val tapDownTime = remember { longArrayOf(0L) }
     val sceneViewRef = remember { arrayOfNulls<SceneView>(1) }
-    val panTarget = remember(ligand.id) { floatArrayOf(0f, 0f) } // x,y world units
-    val twoFinger = remember { floatArrayOf(0f, 0f, 0f) } // active(0/1), lastMidX, lastMidY
-    val twoFingerSpan = remember { floatArrayOf(0f) } // lastSpan
+    val panTarget = remember(ligand.id) { floatArrayOf(0f, 0f) }
+    val twoFinger = remember { floatArrayOf(0f, 0f, 0f) }
+    val twoFingerSpan = remember { floatArrayOf(0f) }
+    val firstFrameLogged = remember(ligand.id) { booleanArrayOf(false) }
 
     val cameraNode = rememberCameraNode(engine).apply {
         near = 0.1f
         far = 1000.0f
     }
 
-    val maxCoord = ligand.atoms.maxOfOrNull {
+    val atomsForCenter = ligand.atoms.filterNot {
+        val e = it.element.uppercase().trim()
+        e == "H" || e == "D"
+    }.ifEmpty { ligand.atoms }
+    val cx = atomsForCenter.map { it.x }.average().toFloat()
+    val cy = atomsForCenter.map { it.y }.average().toFloat()
+    val cz = atomsForCenter.map { it.z }.average().toFloat()
+    val maxCoord = atomsForCenter.maxOfOrNull {
         maxOf(
-            kotlin.math.abs(it.x),
-            kotlin.math.abs(it.y),
-            kotlin.math.abs(it.z)
+            kotlin.math.abs(it.x - cx),
+            kotlin.math.abs(it.y - cy),
+            kotlin.math.abs(it.z - cz)
         )
     } ?: 5f
-    val baseCameraDistance = maxCoord * 2.5f
+    val baseCameraDistance = (maxCoord.coerceAtLeast(2f)) * 2.8f
     val distance = (baseCameraDistance / zoomFactor).coerceIn(baseCameraDistance * 0.3f, baseCameraDistance * 4f)
     val lastCameraVector = remember(ligand.id) { floatArrayOf(0f, 0f, baseCameraDistance) }
     val cameraPosition = remember(ligand.id, zoomFactor) {
@@ -577,16 +692,14 @@ private fun MoleculeViewer(
     }
 
     var autoRotateAngle by remember(ligand.id) { mutableFloatStateOf(0f) }
-    var sceneReady by remember(ligand.id) { mutableStateOf(false) }
 
     Box(
         modifier = modifier
-            .background(sceneBackground)
     ) {
         Scene(
             modifier = Modifier.fillMaxSize(),
             engine = engine,
-            isOpaque = true,
+            isOpaque = false,
             materialLoader = materialLoader,
             cameraNode = cameraNode,
             cameraManipulator = cameraManipulator,
@@ -694,7 +807,6 @@ private fun MoleculeViewer(
                                 val prev = lastTap[0]
                                 val prevId = lastTapAtomId[0]
                                 if (prevId == closestAtom.id && now - prev < 320L) {
-                                    // Double-tap: center on atom (smooth) by shifting the molecule origin.
                                     val atomsForCenter = ligand.atoms.filterNot {
                                         val e = it.element.uppercase().trim()
                                         e == "H" || e == "D"
@@ -711,7 +823,6 @@ private fun MoleculeViewer(
                                 lastTap[0] = now
                                 lastTapAtomId[0] = closestAtom.id
                             } else {
-                                // If no atom selected, try bonds (tap near the middle of bond segment).
                                 if (!measurementMode) {
                                     val bondPick = pickBond(
                                         ligand = ligand,
@@ -740,20 +851,13 @@ private fun MoleculeViewer(
             },
             onViewCreated = {
                 sceneViewRef[0] = this
-                (this as? android.view.SurfaceView)?.apply {
-                    setZOrderOnTop(false)
-                    setZOrderMediaOverlay(false)
-                    holder.setFormat(PixelFormat.TRANSLUCENT)
-                    setBackgroundColor(android.graphics.Color.TRANSPARENT)
+                runCatching {
+                    val loc = IntArray(2)
+                    getLocationInWindow(loc)
+                    sceneViewWindowXY[0] = loc[0]
+                    sceneViewWindowXY[1] = loc[1]
                 }
-                setBackgroundColor(
-                    android.graphics.Color.argb(
-                        255,
-                        (sceneBackground.red * 255).toInt(),
-                        (sceneBackground.green * 255).toInt(),
-                        (sceneBackground.blue * 255).toInt()
-                    )
-                )
+                sceneViewSizePx = IntSize(width.coerceAtLeast(0), height.coerceAtLeast(0))
                 renderer.clearOptions = renderer.clearOptions.apply {
                     clear = true
                     clearColor = floatArrayOf(
@@ -763,9 +867,22 @@ private fun MoleculeViewer(
                         1f
                     )
                 }
+                Log.i("SwiftyProtein", "SceneView created w=$width h=$height")
+            },
+            onViewUpdated = {
+                runCatching {
+                    val loc = IntArray(2)
+                    getLocationInWindow(loc)
+                    sceneViewWindowXY[0] = loc[0]
+                    sceneViewWindowXY[1] = loc[1]
+                }
+                sceneViewSizePx = IntSize(width.coerceAtLeast(0), height.coerceAtLeast(0))
             },
             onFrame = {
-                if (!sceneReady) sceneReady = true
+                if (!firstFrameLogged[0]) {
+                    firstFrameLogged[0] = true
+                    Log.i("SwiftyProtein", "First frame")
+                }
                 val p = cameraNode.position
                 lastCameraVector[0] = p.x
                 lastCameraVector[1] = p.y
@@ -779,7 +896,10 @@ private fun MoleculeViewer(
                     cameraNode.position = io.github.sceneview.math.Position(x, 0f, z)
                 }
 
-                // Smooth center-on-atom animation by shifting molecule origin.
+                runCatching {
+                    cameraNode.lookAt(io.github.sceneview.math.Position(0f, 0f, 0f))
+                }
+
                 val target = focusTarget
                 if (target != null) {
                     val k = 0.12f
@@ -799,14 +919,20 @@ private fun MoleculeViewer(
                     }
                 }
 
-                // Atom labels overlay (project to screen every few frames).
                 if (showAtomLabels) {
                     labelFrameCounter++
-                    if (labelFrameCounter % 3 == 0) {
+                    if (labelFrameCounter == 1 || labelFrameCounter % 20 == 0) {
                         val sv = sceneViewRef[0]
                         if (sv != null && sv.width > 0 && sv.height > 0) {
-                            val map = LinkedHashMap<String, Offset>(atomNodeMap.size)
-                            for ((node, atom) in atomNodeMap) {
+                            val entries = atomNodeMap.entries.asSequence()
+                                .filter { (_, atom) ->
+                                    val e = atom.element.uppercase().trim()
+                                    e != "H" && e != "D"
+                                }
+                                .take(40)
+                                .toList()
+                            val map = LinkedHashMap<String, Offset>(entries.size)
+                            for ((node, atom) in entries) {
                                 val v = cameraNode.worldToView(node.worldPosition)
                                 val px = (v.x * sv.width.toFloat()).coerceIn(0f, sv.width.toFloat())
                                 val py = ((1f - v.y) * sv.height.toFloat()).coerceIn(0f, sv.height.toFloat())
@@ -821,45 +947,56 @@ private fun MoleculeViewer(
             }
         )
 
-        AnimatedVisibility(
-            visible = !sceneReady,
-            enter = fadeIn(),
-            exit = fadeOut(),
-            modifier = Modifier.fillMaxSize()
-        ) {
-            Box(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .background(sceneBackground)
-            )
-        }
-
         if (showAtomLabels && labelPositions.isNotEmpty()) {
-            for ((atomId, pos) in labelPositions) {
-                val atom = ligand.atoms.firstOrNull { it.id == atomId } ?: continue
-                Text(
-                    text = atom.element,
-                    modifier = Modifier.offset {
-                        IntOffset(
-                            (pos.x - 8).toInt(),
-                            (pos.y - 10).toInt()
-                        )
-                    },
-                    style = MaterialTheme.typography.labelSmall,
-                    color = MaterialTheme.colorScheme.onSurface
-                )
+            val atomById = remember(ligand.id) { ligand.atoms.associateBy { it.id } }
+            val onSurface = MaterialTheme.colorScheme.onSurface
+            val density = androidx.compose.ui.platform.LocalDensity.current
+            val popupW = sceneViewSizePx.width
+            val popupH = sceneViewSizePx.height
+            val paint = remember(onSurface, density) {
+                android.graphics.Paint().apply {
+                    isAntiAlias = true
+                    color = android.graphics.Color.argb(
+                        230,
+                        (onSurface.red * 255).toInt(),
+                        (onSurface.green * 255).toInt(),
+                        (onSurface.blue * 255).toInt()
+                    )
+                    textSize = with(density) { 11.dp.toPx() }
+                    typeface = android.graphics.Typeface.create(
+                        android.graphics.Typeface.DEFAULT,
+                        android.graphics.Typeface.BOLD
+                    )
+                }
+            }
+            val fm = paint.fontMetrics
+            val textHalfH = -(fm.ascent + fm.descent) / 2f
+            val labelSnapshot = labelPositions
+            if (popupW > 0 && popupH > 0) {
+                LabelOverlayPopup(
+                    widthPx = popupW,
+                    heightPx = popupH,
+                    density = density
+                ) { canvas ->
+                    for ((atomId, pos) in labelSnapshot) {
+                        val atom = atomById[atomId] ?: continue
+                        val text = atom.element
+                        val w = paint.measureText(text)
+                        canvas.drawText(text, pos.x - w / 2f, pos.y + textHalfH, paint)
+                    }
+                }
             }
         }
 
         if (measurementMode) {
-            MeasurementOverlay(
-                ligand = ligand,
-                selectedAtomIds = measurementAtomIds,
-                onClear = onClearMeasurement,
-                modifier = Modifier
-                    .align(Alignment.BottomStart)
-                    .padding(start = 10.dp, bottom = 10.dp)
-            )
+            androidx.compose.ui.window.Popup(alignment = Alignment.BottomStart) {
+                MeasurementOverlay(
+                    ligand = ligand,
+                    selectedAtomIds = measurementAtomIds,
+                    onClear = onClearMeasurement,
+                    modifier = Modifier.padding(start = 10.dp, bottom = 10.dp)
+                )
+            }
         }
 
     }
@@ -1187,5 +1324,66 @@ private fun BondTooltip(
                 color = MaterialTheme.colorScheme.onSecondaryContainer.copy(alpha = 0.85f)
             )
         }
+    }
+}
+
+@Composable
+private fun LabelOverlayPopup(
+    widthPx: Int,
+    heightPx: Int,
+    density: androidx.compose.ui.unit.Density,
+    drawLabels: (android.graphics.Canvas) -> Unit
+) {
+    val currentDraw = androidx.compose.runtime.rememberUpdatedState(drawLabels)
+    androidx.compose.ui.window.Popup(
+        alignment = Alignment.TopStart,
+        properties = androidx.compose.ui.window.PopupProperties(
+            focusable = false,
+            clippingEnabled = false
+        )
+    ) {
+        val sizeModifier = with(density) {
+            Modifier.size(widthPx.toDp(), heightPx.toDp())
+        }
+        AndroidView(
+            factory = { ctx ->
+                object : android.view.View(ctx) {
+                    init {
+                        setWillNotDraw(false)
+                        setBackgroundColor(android.graphics.Color.TRANSPARENT)
+                    }
+                    override fun onTouchEvent(event: android.view.MotionEvent?) = false
+                    override fun onDraw(c: android.graphics.Canvas) {
+                        super.onDraw(c)
+                        currentDraw.value(c)
+                    }
+                    override fun onAttachedToWindow() {
+                        super.onAttachedToWindow()
+                        applyNotTouchable()
+                    }
+                    private fun applyNotTouchable() {
+                        var r: android.view.ViewParent? = parent
+                        while (r != null) {
+                            if (r is android.view.View) {
+                                val root = r as android.view.View
+                                val lp = root.layoutParams
+                                if (lp is android.view.WindowManager.LayoutParams) {
+                                    lp.flags = lp.flags or
+                                        android.view.WindowManager.LayoutParams.FLAG_NOT_TOUCHABLE
+                                    runCatching {
+                                        (root.context.getSystemService(Context.WINDOW_SERVICE) as android.view.WindowManager)
+                                            .updateViewLayout(root, lp)
+                                    }
+                                    break
+                                }
+                            }
+                            r = r.parent
+                        }
+                    }
+                }
+            },
+            update = { it.invalidate() },
+            modifier = sizeModifier
+        )
     }
 }

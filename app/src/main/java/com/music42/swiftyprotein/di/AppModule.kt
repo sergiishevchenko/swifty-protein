@@ -30,6 +30,7 @@ object AppModule {
             "swifty_protein_db"
         )
             .addMigrations(AppDatabase.MIGRATION_1_2)
+            .fallbackToDestructiveMigrationOnDowngrade()
             .build()
     }
 

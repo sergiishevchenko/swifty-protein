@@ -17,6 +17,7 @@ import android.hardware.display.VirtualDisplay
 import android.util.Log
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -117,8 +118,16 @@ fun ProteinViewScreen(
     var zoomFactor by remember(uiState.ligand?.id) { mutableFloatStateOf(1f) }
     var showShareFormatDialog by remember { mutableStateOf(false) }
     var isRecording by remember { mutableStateOf(false) }
+    var showBallsModeHint by remember { mutableStateOf(false) }
     val coroutineScope = rememberCoroutineScope()
     val recorderHolder = remember { arrayOf<ScreenRecorder?>(null) }
+
+    LaunchedEffect(showBallsModeHint) {
+        if (showBallsModeHint) {
+            kotlinx.coroutines.delay(2000L)
+            showBallsModeHint = false
+        }
+    }
 
     val projectionLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.StartActivityForResult()
@@ -293,6 +302,9 @@ fun ProteinViewScreen(
                                         onClick = {
                                             if (isRecording) return@IconButton
                                             val activity = context as? Activity ?: return@IconButton
+                                            (activity as? com.music42.swiftyprotein.MainActivity)?.let {
+                                                it.suppressLoginOnResume = true
+                                            }
                                             val mgr = activity.getSystemService(Context.MEDIA_PROJECTION_SERVICE) as MediaProjectionManager
                                             projectionLauncher.launch(mgr.createScreenCaptureIntent())
                                         },
@@ -321,7 +333,13 @@ fun ProteinViewScreen(
                                     elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
                                 ) {
                                     IconButton(
-                                        onClick = { viewModel.setMeasurementMode(!uiState.measurementMode) },
+                                        onClick = {
+                                            if (uiState.visualizationMode != VisualizationMode.BALL_AND_STICK) {
+                                                showBallsModeHint = true
+                                                return@IconButton
+                                            }
+                                            viewModel.setMeasurementMode(!uiState.measurementMode)
+                                        },
                                         modifier = Modifier.fillMaxSize()
                                     ) {
                                         Icon(
@@ -347,7 +365,13 @@ fun ProteinViewScreen(
                                     elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
                                 ) {
                                     IconButton(
-                                        onClick = { viewModel.setShowAtomLabels(!uiState.showAtomLabels) },
+                                        onClick = {
+                                            if (uiState.visualizationMode != VisualizationMode.BALL_AND_STICK) {
+                                                showBallsModeHint = true
+                                                return@IconButton
+                                            }
+                                            viewModel.setShowAtomLabels(!uiState.showAtomLabels)
+                                        },
                                         modifier = Modifier.fillMaxSize()
                                     ) {
                                         Icon(
@@ -438,77 +462,60 @@ fun ProteinViewScreen(
                                     enter = fadeIn(),
                                     exit = fadeOut()
                                 ) {
-                                    Card(
-                                        shape = RoundedCornerShape(999.dp),
-                                        colors = CardDefaults.cardColors(
-                                            containerColor = MaterialTheme.colorScheme.tertiaryContainer
-                                        ),
-                                        elevation = CardDefaults.cardElevation(defaultElevation = 8.dp)
-                                    ) {
-                                        Text(
-                                            text = "MEASURE MODE",
-                                            modifier = Modifier
-                                                .clickable { viewModel.setMeasurementMode(false) }
-                                                .padding(horizontal = 14.dp, vertical = 8.dp),
-                                            style = MaterialTheme.typography.labelLarge,
-                                            color = MaterialTheme.colorScheme.onTertiaryContainer,
-                                            fontWeight = FontWeight.SemiBold
-                                        )
-                                    }
+                                    ModeBanner(
+                                        text = "MEASURE MODE",
+                                        onClick = { viewModel.setMeasurementMode(false) }
+                                    )
                                 }
                                 AnimatedVisibility(
                                     visible = uiState.showAtomLabels,
                                     enter = fadeIn(),
                                     exit = fadeOut()
                                 ) {
-                                    Card(
-                                        shape = RoundedCornerShape(999.dp),
-                                        colors = CardDefaults.cardColors(
-                                            containerColor = MaterialTheme.colorScheme.secondaryContainer
-                                        ),
-                                        elevation = CardDefaults.cardElevation(defaultElevation = 8.dp),
+                                    ModeBanner(
+                                        text = "LABELS MODE",
+                                        onClick = { viewModel.setShowAtomLabels(false) },
                                         modifier = Modifier.padding(top = 8.dp)
-                                    ) {
-                                        Text(
-                                            text = "LABELS MODE",
-                                            modifier = Modifier
-                                                .clickable { viewModel.setShowAtomLabels(false) }
-                                                .padding(horizontal = 14.dp, vertical = 8.dp),
-                                            style = MaterialTheme.typography.labelLarge,
-                                            color = MaterialTheme.colorScheme.onSecondaryContainer,
-                                            fontWeight = FontWeight.SemiBold
-                                        )
-                                    }
+                                    )
+                                }
+                                AnimatedVisibility(
+                                    visible = showBallsModeHint,
+                                    enter = fadeIn(),
+                                    exit = fadeOut()
+                                ) {
+                                    ModeBanner(
+                                        text = "Switch to Balls mode",
+                                        onClick = { showBallsModeHint = false },
+                                        modifier = Modifier.padding(top = 8.dp)
+                                    )
                                 }
                             }
                         }
 
                         if (uiState.selectedAtom != null) {
                             androidx.compose.ui.window.Popup(
-                                alignment = Alignment.TopStart,
+                                alignment = Alignment.BottomStart,
                                 onDismissRequest = { viewModel.dismissAtomInfo() }
                             ) {
-                                Box(modifier = Modifier.padding(start = 8.dp, top = 8.dp)) {
-                                    AtomTooltip(
-                                        atom = uiState.selectedAtom!!,
-                                        onDismiss = viewModel::dismissAtomInfo
-                                    )
-                                }
+                                AtomTooltip(
+                                    atom = uiState.selectedAtom!!,
+                                    onDismiss = viewModel::dismissAtomInfo,
+                                    modifier = Modifier.padding(start = 10.dp, bottom = 100.dp)
+                                )
                             }
                         }
 
                         if (uiState.selectedBond != null) {
                             androidx.compose.ui.window.Popup(
-                                alignment = Alignment.TopStart,
+                                alignment = Alignment.BottomStart,
                                 onDismissRequest = { viewModel.dismissBondInfo() }
                             ) {
-                                Box(modifier = Modifier.padding(start = 8.dp, top = 8.dp)) {
-                                    BondTooltip(
-                                        bond = uiState.selectedBond!!,
-                                        ligand = uiState.ligand!!,
-                                        onDismiss = viewModel::dismissBondInfo
-                                    )
-                                }
+                                BondTooltip(
+                                    bond = uiState.selectedBond!!,
+                                    ligand = uiState.ligand!!,
+                                    onDismiss = viewModel::dismissBondInfo,
+                                    modifier = Modifier.padding(start = 10.dp, bottom = 100.dp)
+                                )
                             }
                         }
 
@@ -973,13 +980,7 @@ private fun MoleculeViewer(
                     if (labelFrameCounter == 1 || labelFrameCounter % 2 == 0) {
                         val sv = sceneViewRef[0]
                         if (sv != null && sv.width > 0 && sv.height > 0) {
-                            val entries = atomNodeMap.entries.asSequence()
-                                .filter { (_, atom) ->
-                                    val e = atom.element.uppercase().trim()
-                                    e != "H" && e != "D"
-                                }
-                                .take(40)
-                                .toList()
+                            val entries = atomNodeMap.entries.toList()
                             val map = LinkedHashMap<String, Offset>(entries.size)
                             for ((node, atom) in entries) {
                                 val v = cameraNode.worldToView(node.worldPosition)
@@ -1112,31 +1113,32 @@ private fun MeasurementOverlay(
 @Composable
 private fun AtomTooltip(
     atom: Atom,
-    onDismiss: () -> Unit
+    onDismiss: () -> Unit,
+    modifier: Modifier = Modifier
 ) {
-    Box(
-        modifier = Modifier
-            .clip(RoundedCornerShape(12.dp))
-            .background(MaterialTheme.colorScheme.primaryContainer)
-            .clickable { onDismiss() }
-            .padding(horizontal = 20.dp, vertical = 12.dp)
+    val bg = MaterialTheme.colorScheme.inverseSurface.copy(alpha = 0.88f)
+    val fg = MaterialTheme.colorScheme.inverseOnSurface
+    Card(
+        shape = RoundedCornerShape(999.dp),
+        colors = CardDefaults.cardColors(containerColor = bg),
+        elevation = CardDefaults.cardElevation(defaultElevation = 8.dp),
+        modifier = modifier.clickable(onClick = onDismiss)
     ) {
-        Column(horizontalAlignment = Alignment.CenterHorizontally) {
-            Text(
-                text = atom.element,
-                style = MaterialTheme.typography.headlineLarge,
-                fontWeight = FontWeight.Bold,
-                color = MaterialTheme.colorScheme.onPrimaryContainer
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            modifier = Modifier.padding(start = 8.dp, end = 16.dp, top = 8.dp, bottom = 8.dp)
+        ) {
+            Image(
+                painter = androidx.compose.ui.res.painterResource(com.music42.swiftyprotein.R.drawable.ic_launcher_foreground),
+                contentDescription = null,
+                modifier = Modifier.size(28.dp)
             )
+            Spacer(modifier = Modifier.width(4.dp))
             Text(
-                text = atom.elementName,
-                style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.8f)
-            )
-            Text(
-                text = "Atom: ${atom.id}",
-                style = MaterialTheme.typography.labelSmall,
-                color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.6f)
+                text = "${atom.element}  ·  ${atom.elementName}  ·  ${atom.id}",
+                style = MaterialTheme.typography.labelLarge,
+                color = fg,
+                fontWeight = FontWeight.SemiBold
             )
         }
     }
@@ -1322,7 +1324,8 @@ private fun pickBond(
 private fun BondTooltip(
     bond: Bond,
     ligand: Ligand,
-    onDismiss: () -> Unit
+    onDismiss: () -> Unit,
+    modifier: Modifier = Modifier
 ) {
     val a1 = ligand.atoms.firstOrNull { it.id == bond.atomId1 }
     val a2 = ligand.atoms.firstOrNull { it.id == bond.atomId2 }
@@ -1341,34 +1344,29 @@ private fun BondTooltip(
     }
     val lengthText = length?.let { String.format("%.2f Å", it) } ?: "?"
 
-    Box(
-        modifier = Modifier
-            .clip(RoundedCornerShape(12.dp))
-            .background(MaterialTheme.colorScheme.secondaryContainer)
-            .clickable { onDismiss() }
-            .padding(horizontal = 18.dp, vertical = 12.dp)
+    val bg = MaterialTheme.colorScheme.inverseSurface.copy(alpha = 0.88f)
+    val fg = MaterialTheme.colorScheme.inverseOnSurface
+    Card(
+        shape = RoundedCornerShape(999.dp),
+        colors = CardDefaults.cardColors(containerColor = bg),
+        elevation = CardDefaults.cardElevation(defaultElevation = 8.dp),
+        modifier = modifier.clickable(onClick = onDismiss)
     ) {
-        Column(horizontalAlignment = Alignment.CenterHorizontally) {
-            Text(
-                text = "Bond",
-                style = MaterialTheme.typography.titleMedium,
-                fontWeight = FontWeight.SemiBold,
-                color = MaterialTheme.colorScheme.onSecondaryContainer
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            modifier = Modifier.padding(start = 8.dp, end = 16.dp, top = 8.dp, bottom = 8.dp)
+        ) {
+            Image(
+                painter = androidx.compose.ui.res.painterResource(com.music42.swiftyprotein.R.drawable.ic_launcher_foreground),
+                contentDescription = null,
+                modifier = Modifier.size(28.dp)
             )
+            Spacer(modifier = Modifier.width(4.dp))
             Text(
-                text = "${bond.atomId1} – ${bond.atomId2}",
-                style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onSecondaryContainer
-            )
-            Text(
-                text = "Type: $order",
-                style = MaterialTheme.typography.labelMedium,
-                color = MaterialTheme.colorScheme.onSecondaryContainer.copy(alpha = 0.85f)
-            )
-            Text(
-                text = "Length: $lengthText",
-                style = MaterialTheme.typography.labelMedium,
-                color = MaterialTheme.colorScheme.onSecondaryContainer.copy(alpha = 0.85f)
+                text = "$order  ·  ${bond.atomId1}–${bond.atomId2}  ·  $lengthText",
+                style = MaterialTheme.typography.labelLarge,
+                color = fg,
+                fontWeight = FontWeight.SemiBold
             )
         }
     }
@@ -1448,5 +1446,39 @@ private fun LabelOverlayPopup(
             update = { it.invalidate() },
             modifier = sizeModifier
         )
+    }
+}
+
+@Composable
+private fun ModeBanner(
+    text: String,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    val bg = MaterialTheme.colorScheme.inverseSurface.copy(alpha = 0.88f)
+    val fg = MaterialTheme.colorScheme.inverseOnSurface
+    Card(
+        shape = RoundedCornerShape(999.dp),
+        colors = CardDefaults.cardColors(containerColor = bg),
+        elevation = CardDefaults.cardElevation(defaultElevation = 8.dp),
+        modifier = modifier.clickable(onClick = onClick)
+    ) {
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            modifier = Modifier.padding(start = 8.dp, end = 16.dp, top = 8.dp, bottom = 8.dp)
+        ) {
+            Image(
+                painter = androidx.compose.ui.res.painterResource(com.music42.swiftyprotein.R.drawable.ic_launcher_foreground),
+                contentDescription = null,
+                modifier = Modifier.size(28.dp)
+            )
+            Spacer(modifier = Modifier.width(4.dp))
+            Text(
+                text = text,
+                style = MaterialTheme.typography.labelLarge,
+                color = fg,
+                fontWeight = FontWeight.SemiBold
+            )
+        }
     }
 }

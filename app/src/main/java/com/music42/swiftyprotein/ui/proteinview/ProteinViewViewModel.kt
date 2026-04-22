@@ -112,7 +112,13 @@ class ProteinViewViewModel @Inject constructor(
     }
 
     fun setVisualizationMode(mode: VisualizationMode) {
-        _uiState.update { it.copy(visualizationMode = mode) }
+        _uiState.update {
+            it.copy(
+                visualizationMode = mode,
+                showAtomLabels = if (mode != VisualizationMode.BALL_AND_STICK) false else it.showAtomLabels,
+                measurementMode = if (mode != VisualizationMode.BALL_AND_STICK) false else it.measurementMode
+            )
+        }
     }
 
     fun setShowAtomLabels(show: Boolean) {

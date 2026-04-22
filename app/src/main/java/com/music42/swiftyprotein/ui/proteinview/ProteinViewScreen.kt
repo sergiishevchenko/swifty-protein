@@ -29,6 +29,7 @@ import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
@@ -281,7 +282,10 @@ fun ProteinViewScreen(
                                     modifier = Modifier.size(42.dp),
                                     shape = CircleShape,
                                     colors = CardDefaults.cardColors(
-                                        containerColor = MaterialTheme.colorScheme.surface
+                                        containerColor = if (isRecording)
+                                            MaterialTheme.colorScheme.errorContainer
+                                        else
+                                            MaterialTheme.colorScheme.surface
                                     ),
                                     elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
                                 ) {
@@ -297,7 +301,10 @@ fun ProteinViewScreen(
                                         Icon(
                                             Icons.Default.Videocam,
                                             contentDescription = "Record video",
-                                            tint = if (isRecording) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.primary
+                                            tint = if (isRecording)
+                                                MaterialTheme.colorScheme.onErrorContainer
+                                            else
+                                                MaterialTheme.colorScheme.primary
                                         )
                                     }
                                 }
@@ -306,7 +313,10 @@ fun ProteinViewScreen(
                                     modifier = Modifier.size(42.dp),
                                     shape = CircleShape,
                                     colors = CardDefaults.cardColors(
-                                        containerColor = MaterialTheme.colorScheme.surface
+                                        containerColor = if (uiState.measurementMode)
+                                            MaterialTheme.colorScheme.primaryContainer
+                                        else
+                                            MaterialTheme.colorScheme.surface
                                     ),
                                     elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
                                 ) {
@@ -318,7 +328,7 @@ fun ProteinViewScreen(
                                             Icons.Default.Straighten,
                                             contentDescription = "Toggle measurement mode",
                                             tint = if (uiState.measurementMode)
-                                                MaterialTheme.colorScheme.tertiary
+                                                MaterialTheme.colorScheme.onPrimaryContainer
                                             else
                                                 MaterialTheme.colorScheme.primary
                                         )
@@ -329,7 +339,10 @@ fun ProteinViewScreen(
                                     modifier = Modifier.size(42.dp),
                                     shape = CircleShape,
                                     colors = CardDefaults.cardColors(
-                                        containerColor = MaterialTheme.colorScheme.surface
+                                        containerColor = if (uiState.showAtomLabels)
+                                            MaterialTheme.colorScheme.primaryContainer
+                                        else
+                                            MaterialTheme.colorScheme.surface
                                     ),
                                     elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
                                 ) {
@@ -341,7 +354,7 @@ fun ProteinViewScreen(
                                             Icons.Default.Label,
                                             contentDescription = "Toggle atom labels",
                                             tint = if (uiState.showAtomLabels)
-                                                MaterialTheme.colorScheme.tertiary
+                                                MaterialTheme.colorScheme.onPrimaryContainer
                                             else
                                                 MaterialTheme.colorScheme.primary
                                         )
@@ -1026,7 +1039,9 @@ private fun MoleculeViewer(
                     ligand = ligand,
                     selectedAtomIds = measurementAtomIds,
                     onClear = onClearMeasurement,
-                    modifier = Modifier.padding(start = 10.dp, bottom = 10.dp)
+                    modifier = Modifier
+                        .padding(start = 10.dp, bottom = 10.dp, end = 60.dp)
+                        .widthIn(max = 280.dp)
                 )
             }
         }

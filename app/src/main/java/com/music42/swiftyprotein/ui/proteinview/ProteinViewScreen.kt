@@ -370,9 +370,9 @@ fun ProteinViewScreen(
                             }
                         }
 
-                        androidx.compose.ui.window.Popup(alignment = Alignment.TopStart) {
+                        androidx.compose.ui.window.Popup(alignment = Alignment.BottomEnd) {
                             Column(
-                                modifier = Modifier.padding(start = 8.dp, top = 8.dp),
+                                modifier = Modifier.padding(end = 8.dp, bottom = 100.dp),
                                 horizontalAlignment = Alignment.CenterHorizontally
                             ) {
                                 Card(
@@ -532,10 +532,10 @@ fun ProteinViewScreen(
                                             Text(
                                                 modifier = Modifier.fillMaxWidth(),
                                                 text = when (mode) {
-                                                    VisualizationMode.BALL_AND_STICK -> "Ball & Stick"
-                                                    VisualizationMode.SPACE_FILL -> "Space Fill"
+                                                    VisualizationMode.BALL_AND_STICK -> "Balls"
+                                                    VisualizationMode.SPACE_FILL -> "Fill"
                                                     VisualizationMode.STICKS_ONLY -> "Sticks"
-                                                    VisualizationMode.WIREFRAME -> "Wireframe"
+                                                    VisualizationMode.WIREFRAME -> "Wire"
                                                 },
                                                 style = MaterialTheme.typography.labelSmall,
                                                 textAlign = TextAlign.Center,
@@ -631,18 +631,45 @@ private fun MoleculeViewer(
         }
     }
 
-    val (parentNode, atomNodeMap) = remember(ligand, mode, selectedAtom?.element) {
+    val (parentNode, atomNodeMap) = remember(ligand, mode) {
         MoleculeSceneBuilder.build(
             engine = engine,
             materialLoader = materialLoader,
             ligand = ligand,
             mode = mode,
-            highlightElement = selectedAtom?.element,
+            highlightElement = null,
             centerOffset = Float3(0f, 0f, 0f)
         )
     }
-    LaunchedEffect(ligand.id, mode, selectedAtom?.element, atomNodeMap.size) {
+    LaunchedEffect(ligand.id, mode, atomNodeMap.size) {
         Log.i("SwiftyProtein", "Scene built id=${ligand.id} mode=$mode nodes=${atomNodeMap.size}")
+    }
+
+    LaunchedEffect(selectedAtom?.id) {
+        for (entry in atomNodeMap) {
+            val node = entry.key
+            val atom = entry.value
+            val isSelected = selectedAtom != null && atom.id == selectedAtom.id
+            val base = com.music42.swiftyprotein.util.CpkColors.getColor(atom.element)
+            val color = if (isSelected) {
+                Color(
+                    (base.red * 1.5f).coerceIn(0f, 1f),
+                    (base.green * 1.5f).coerceIn(0f, 1f),
+                    (base.blue * 1.5f).coerceIn(0f, 1f),
+                    1f
+                )
+            } else {
+                base
+            }
+            runCatching {
+                node.materialInstance = materialLoader.createColorInstance(
+                    color = color,
+                    metallic = 0.0f,
+                    roughness = 0.6f,
+                    reflectance = 0.3f
+                )
+            }
+        }
     }
 
     val tapDownPos = remember { floatArrayOf(0f, 0f) }

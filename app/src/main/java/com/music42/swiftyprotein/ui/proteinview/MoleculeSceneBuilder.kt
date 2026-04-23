@@ -5,6 +5,7 @@ import com.music42.swiftyprotein.data.model.Atom
 import com.music42.swiftyprotein.data.model.BondOrder
 import com.music42.swiftyprotein.data.model.Ligand
 import com.music42.swiftyprotein.util.CpkColors
+import com.music42.swiftyprotein.util.VdwRadii
 import dev.romainguy.kotlin.math.Float3
 import dev.romainguy.kotlin.math.Quaternion
 import dev.romainguy.kotlin.math.normalize
@@ -34,6 +35,8 @@ object MoleculeSceneBuilder {
     private const val TRIPLE_BOND_OFFSET = 0.14f
     private const val SPHERE_STACKS = 16
     private const val SPHERE_SLICES = 16
+    private const val SPACE_FILL_BASE_SCALE = 2.5f
+    private const val SPACE_FILL_REF_VDW = 1.70f
 
     fun build(
         engine: Engine,
@@ -58,10 +61,13 @@ object MoleculeSceneBuilder {
         val highlight = highlightElement?.uppercase()?.trim()?.takeIf { it.isNotEmpty() }
 
         if (mode != VisualizationMode.STICKS_ONLY && mode != VisualizationMode.WIREFRAME) {
-            val radius = if (mode == VisualizationMode.SPACE_FILL)
-                BALL_RADIUS * 2.5f else BALL_RADIUS
-
             for (atom in atomsForRender) {
+                val radius = if (mode == VisualizationMode.SPACE_FILL) {
+                    val vdw = VdwRadii.radiusAngstrom(atom.element)
+                    BALL_RADIUS * SPACE_FILL_BASE_SCALE * (vdw / SPACE_FILL_REF_VDW)
+                } else {
+                    BALL_RADIUS
+                }
                 val base = CpkColors.getColor(atom.element)
                 val color = when {
                     highlight == null -> base

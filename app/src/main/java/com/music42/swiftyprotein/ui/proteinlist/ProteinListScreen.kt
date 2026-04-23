@@ -47,6 +47,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.foundation.layout.Row
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
@@ -209,8 +210,9 @@ private fun LigandItem(
         animationSpec = spring(stiffness = Spring.StiffnessMedium),
         label = "favorite_scale"
     )
+    val accentGreen = Color(0xFF4CAF50)
     val starTint by animateColorAsState(
-        targetValue = if (isFavorite) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
+        targetValue = if (isFavorite) accentGreen else accentGreen.copy(alpha = 0.65f),
         animationSpec = tween(durationMillis = 220),
         label = "favorite_tint"
     )
@@ -225,19 +227,25 @@ private fun LigandItem(
         ),
         elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
     ) {
-        Box(
+        Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(horizontal = 16.dp, vertical = 14.dp)
+                .padding(start = 16.dp, end = 4.dp, top = 6.dp, bottom = 6.dp),
+            verticalAlignment = Alignment.CenterVertically
         ) {
             Text(
                 text = ligandId,
-                fontWeight = FontWeight.SemiBold
+                fontWeight = FontWeight.SemiBold,
+                color = accentGreen,
+                modifier = Modifier.weight(1f)
             )
-            IconButton(
-                onClick = onToggleFavorite,
-                modifier = Modifier.align(Alignment.CenterEnd)
-            ) {
+            if (isLoading) {
+                CircularProgressIndicator(
+                    modifier = Modifier.size(22.dp),
+                    strokeWidth = 2.dp
+                )
+            }
+            IconButton(onClick = onToggleFavorite) {
                 Icon(
                     imageVector = if (isFavorite) Icons.Default.Star else Icons.Default.StarBorder,
                     contentDescription = if (isFavorite) "Unfavorite" else "Favorite",
@@ -246,14 +254,6 @@ private fun LigandItem(
                         scaleX = starScale
                         scaleY = starScale
                     }
-                )
-            }
-            if (isLoading) {
-                CircularProgressIndicator(
-                    modifier = Modifier
-                        .size(22.dp)
-                        .align(Alignment.CenterEnd),
-                    strokeWidth = 2.dp
                 )
             }
         }

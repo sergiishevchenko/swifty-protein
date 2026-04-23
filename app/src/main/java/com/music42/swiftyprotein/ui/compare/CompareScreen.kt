@@ -15,6 +15,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.Remove
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
@@ -194,6 +195,26 @@ private fun ComparePanel(
                                 )
                             }
                         }
+                        Spacer(modifier = Modifier.height(8.dp))
+                        Card(
+                            modifier = Modifier.size(40.dp),
+                            shape = RoundedCornerShape(999.dp),
+                            colors = CardDefaults.cardColors(
+                                containerColor = MaterialTheme.colorScheme.primary
+                            ),
+                            elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
+                        ) {
+                            IconButton(
+                                onClick = { zoomFactor = 1f },
+                                modifier = Modifier.fillMaxSize()
+                            ) {
+                                Icon(
+                                    Icons.Filled.Refresh,
+                                    contentDescription = "Reset view",
+                                    tint = MaterialTheme.colorScheme.onPrimary
+                                )
+                            }
+                        }
                     }
                 }
             }
@@ -210,6 +231,11 @@ private fun SimpleMoleculeViewer(
 ) {
     val engine = rememberEngine()
     val materialLoader = rememberMaterialLoader(engine)
+    val sceneTint = if (MaterialTheme.colorScheme.background.red < 0.4f) {
+        Color(0xFF151A20)
+    } else {
+        Color(0xFFF3F5F7)
+    }
     val centerOffset = remember(ligand.id) { dev.romainguy.kotlin.math.Float3(0f, 0f, 0f) }
     val (parentNode, _) = remember(ligand.id) {
         MoleculeSceneBuilder.build(
@@ -227,16 +253,31 @@ private fun SimpleMoleculeViewer(
         far = 1000.0f
     }
 
-    val maxCoord = ligand.atoms.maxOfOrNull {
-        maxOf(kotlin.math.abs(it.x), kotlin.math.abs(it.y), kotlin.math.abs(it.z))
-    } ?: 5f
-    val baseCameraDistance = maxCoord * 2.5f
-    val distance = (baseCameraDistance / zoomFactor).coerceIn(baseCameraDistance * 0.3f, baseCameraDistance * 4f)
-    cameraNode.position = io.github.sceneview.math.Position(0f, 0f, distance)
+    val atoms = ligand.atoms.filterNot {
+        val e = it.element.uppercase().trim()
+        e == "H" || e == "D"
+    }.ifEmpty { ligand.atoms }
+    val cx = atoms.map { it.x }.average().toFloat()
+    val cy = atoms.map { it.y }.average().toFloat()
+    val cz = atoms.map { it.z }.average().toFloat()
+    val boundingRadius = (atoms.maxOfOrNull { a ->
+        val dx = a.x - cx; val dy = a.y - cy; val dz = a.z - cz
+        kotlin.math.sqrt(dx * dx + dy * dy + dz * dz) + MoleculeSceneBuilder.BALL_RADIUS
+    } ?: 5f).coerceAtLeast(1f)
+    val baseDist = boundingRadius * 4.5f
+    val dist = (baseDist / zoomFactor).coerceIn(baseDist * 0.2f, baseDist * 6f)
+    val dirX = 0.43f; val dirY = 0.32f; val dirZ = 0.75f
+    val dirLen = kotlin.math.sqrt(dirX * dirX + dirY * dirY + dirZ * dirZ)
+    val cameraPos = io.github.sceneview.math.Position(
+        dirX / dirLen * dist,
+        dirY / dirLen * dist,
+        dirZ / dirLen * dist
+    )
+    cameraNode.position = cameraPos
 
     val cameraManipulator = remember(ligand.id, zoomFactor) {
         SceneView.createDefaultCameraManipulator(
-            orbitHomePosition = cameraNode.position,
+            orbitHomePosition = cameraPos,
             targetPosition = io.github.sceneview.math.Position(0f, 0f, 0f)
         )
     }
@@ -252,6 +293,17 @@ private fun SimpleMoleculeViewer(
         cameraNode = cameraNode,
         cameraManipulator = cameraManipulator,
         childNodes = listOf(parentNode),
+        onFrame = {
+            runCatching {
+                cameraNode.lookAt(io.github.sceneview.math.Position(0f, 0f, 0f))
+            }
+        },
+        onViewCreated = {
+            renderer.clearOptions = renderer.clearOptions.apply {
+                clear = true
+                clearColor = floatArrayOf(sceneTint.red, sceneTint.green, sceneTint.blue, 1f)
+            }
+        },
         onTouchEvent = { event, _ ->
             when (event.actionMasked) {
                 android.view.MotionEvent.ACTION_POINTER_DOWN -> {

@@ -10,6 +10,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
@@ -103,6 +104,7 @@ fun FavoritesScreen(
                 ) {
                     items(items = favorites, key = { it }) { ligandId ->
                         val selected = selectedForCompare.contains(ligandId)
+                        val accentGreen = Color(0xFF4CAF50)
                         val containerColor by animateColorAsState(
                             targetValue = if (selected)
                                 MaterialTheme.colorScheme.primaryContainer
@@ -132,7 +134,11 @@ fun FavoritesScreen(
                                 verticalAlignment = Alignment.CenterVertically
                             ) {
                                 Column(modifier = Modifier.weight(1f)) {
-                                    Text(text = ligandId, fontWeight = FontWeight.SemiBold)
+                                    Text(
+                                        text = ligandId,
+                                        fontWeight = FontWeight.SemiBold,
+                                        color = accentGreen
+                                    )
                                     if (selected) {
                                         Text(
                                             text = "Selected for compare",
@@ -142,10 +148,15 @@ fun FavoritesScreen(
                                     }
                                 }
                                 IconButton(onClick = { onLigandSelected(ligandId) }) {
-                                    Icon(Icons.Default.OpenInNew, contentDescription = "Open")
+                                    Icon(
+                                        Icons.Default.OpenInNew,
+                                        contentDescription = "Open",
+                                        tint = accentGreen
+                                    )
                                 }
                             }
                         }
+                        Spacer(modifier = Modifier.size(8.dp))
                     }
                 }
             }

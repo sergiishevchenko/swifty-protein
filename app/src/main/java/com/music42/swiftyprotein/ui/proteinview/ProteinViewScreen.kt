@@ -37,6 +37,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Label
+import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.Straighten
 import androidx.compose.material.icons.filled.Remove
 import androidx.compose.material.icons.filled.Videocam
@@ -116,6 +117,7 @@ fun ProteinViewScreen(
     }
     val safeLigandId = ligandId.substringBefore(" -").trim().ifEmpty { ligandId.trim() }
     var zoomFactor by remember(uiState.ligand?.id) { mutableFloatStateOf(1f) }
+    var resetTick by remember { mutableIntStateOf(0) }
     var showShareFormatDialog by remember { mutableStateOf(false) }
     var isRecording by remember { mutableStateOf(false) }
     var showBallsModeHint by remember { mutableStateOf(false) }
@@ -263,6 +265,7 @@ fun ProteinViewScreen(
                             mode = uiState.visualizationMode,
                             zoomFactor = zoomFactor,
                             onZoomFactorChange = { zoomFactor = it },
+                            resetTick = resetTick,
                             selectedAtom = uiState.selectedAtom,
                             onAtomSelected = viewModel::onAtomSelected,
                             onDismissAtom = viewModel::dismissAtomInfo,
@@ -449,6 +452,28 @@ fun ProteinViewScreen(
                                         )
                                     }
                                 }
+                                Spacer(modifier = Modifier.height(8.dp))
+                                Card(
+                                    modifier = Modifier.size(42.dp),
+                                    shape = CircleShape,
+                                    colors = CardDefaults.cardColors(
+                                        containerColor = MaterialTheme.colorScheme.primary
+                                    )
+                                ) {
+                                    IconButton(
+                                        onClick = {
+                                            zoomFactor = 1f
+                                            resetTick++
+                                        },
+                                        modifier = Modifier.fillMaxSize()
+                                    ) {
+                                        Icon(
+                                            Icons.Filled.Refresh,
+                                            contentDescription = "Reset view",
+                                            tint = MaterialTheme.colorScheme.onPrimary
+                                        )
+                                    }
+                                }
                             }
                         }
 
@@ -616,6 +641,7 @@ private fun MoleculeViewer(
     mode: VisualizationMode,
     zoomFactor: Float,
     onZoomFactorChange: (Float) -> Unit,
+    resetTick: Int,
     selectedAtom: Atom?,
     onAtomSelected: (Atom?) -> Unit,
     onDismissAtom: () -> Unit,
@@ -722,17 +748,47 @@ private fun MoleculeViewer(
     val cx = atomsForCenter.map { it.x }.average().toFloat()
     val cy = atomsForCenter.map { it.y }.average().toFloat()
     val cz = atomsForCenter.map { it.z }.average().toFloat()
-    val maxCoord = atomsForCenter.maxOfOrNull {
-        maxOf(
-            kotlin.math.abs(it.x - cx),
-            kotlin.math.abs(it.y - cy),
-            kotlin.math.abs(it.z - cz)
+
+    val boundingRadius = (atomsForCenter.maxOfOrNull { a ->
+        val dx = a.x - cx; val dy = a.y - cy; val dz = a.z - cz
+        val dist = kotlin.math.sqrt(dx * dx + dy * dy + dz * dz)
+        val visualR = if (mode == VisualizationMode.SPACE_FILL) {
+            MoleculeSceneBuilder.BALL_RADIUS * MoleculeSceneBuilder.SPACE_FILL_BASE_SCALE *
+                (com.music42.swiftyprotein.util.VdwRadii.radiusAngstrom(a.element) / MoleculeSceneBuilder.SPACE_FILL_REF_VDW)
+        } else {
+            MoleculeSceneBuilder.BALL_RADIUS
+        }
+        dist + visualR
+    } ?: 5f).coerceAtLeast(1f)
+
+    val baseCameraDistance = boundingRadius * 4.5f
+    val distance = (baseCameraDistance / zoomFactor)
+        .coerceIn(baseCameraDistance * 0.2f, baseCameraDistance * 6f)
+
+    val defaultCamX = baseCameraDistance * 0.43f
+    val defaultCamY = baseCameraDistance * 0.32f
+    val defaultCamZ = baseCameraDistance * 0.75f
+    val defaultCamLen = kotlin.math.sqrt(defaultCamX * defaultCamX + defaultCamY * defaultCamY + defaultCamZ * defaultCamZ)
+
+    val lastCameraVector = remember(ligand.id) {
+        floatArrayOf(
+            defaultCamX / defaultCamLen * baseCameraDistance,
+            defaultCamY / defaultCamLen * baseCameraDistance,
+            defaultCamZ / defaultCamLen * baseCameraDistance
         )
-    } ?: 5f
-    val baseCameraDistance = (maxCoord.coerceAtLeast(2f)) * 2.8f
-    val distance = (baseCameraDistance / zoomFactor).coerceIn(baseCameraDistance * 0.3f, baseCameraDistance * 4f)
-    val lastCameraVector = remember(ligand.id) { floatArrayOf(0f, 0f, baseCameraDistance) }
-    val cameraPosition = remember(ligand.id, zoomFactor) {
+    }
+    if (resetTick > 0) {
+        lastCameraVector[0] = defaultCamX / defaultCamLen * baseCameraDistance
+        lastCameraVector[1] = defaultCamY / defaultCamLen * baseCameraDistance
+        lastCameraVector[2] = defaultCamZ / defaultCamLen * baseCameraDistance
+        panTarget[0] = 0f
+        panTarget[1] = 0f
+        focusOffset = Float3(0f, 0f, 0f)
+        focusTarget = null
+        parentNode.position = io.github.sceneview.math.Position(0f, 0f, 0f)
+    }
+
+    val cameraPosition = remember(ligand.id, zoomFactor, resetTick) {
         val x = lastCameraVector[0]
         val y = lastCameraVector[1]
         val z = lastCameraVector[2]
@@ -744,12 +800,16 @@ private fun MoleculeViewer(
                 z / len * distance
             )
         } else {
-            io.github.sceneview.math.Position(0f, 0f, distance)
+            io.github.sceneview.math.Position(
+                defaultCamX / defaultCamLen * distance,
+                defaultCamY / defaultCamLen * distance,
+                defaultCamZ / defaultCamLen * distance
+            )
         }
     }
     cameraNode.position = cameraPosition
 
-    val cameraManipulator = remember(ligand.id, zoomFactor) {
+    val cameraManipulator = remember(ligand.id, zoomFactor, resetTick) {
         SceneView.createDefaultCameraManipulator(
             orbitHomePosition = cameraPosition,
             targetPosition = io.github.sceneview.math.Position(panTarget[0], panTarget[1], 0f)

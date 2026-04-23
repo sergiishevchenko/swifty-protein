@@ -28,15 +28,15 @@ import kotlin.math.sqrt
 
 object MoleculeSceneBuilder {
 
-    private const val BALL_RADIUS = 0.35f
+    const val BALL_RADIUS = 0.35f
     private const val STICK_RADIUS = 0.08f
     private const val MULTI_STICK_RADIUS = 0.05f
     private const val DOUBLE_BOND_OFFSET = 0.12f
     private const val TRIPLE_BOND_OFFSET = 0.14f
     private const val SPHERE_STACKS = 16
     private const val SPHERE_SLICES = 16
-    private const val SPACE_FILL_BASE_SCALE = 2.5f
-    private const val SPACE_FILL_REF_VDW = 1.70f
+    const val SPACE_FILL_BASE_SCALE = 2.5f
+    const val SPACE_FILL_REF_VDW = 1.70f
 
     fun build(
         engine: Engine,

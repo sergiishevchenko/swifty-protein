@@ -104,10 +104,10 @@ fun SettingsScreen(
                         label = {
                             Text(
                                 when (mode) {
-                                    VisualizationMode.BALL_AND_STICK -> "Ball & Stick"
-                                    VisualizationMode.SPACE_FILL -> "Space Fill"
+                                    VisualizationMode.BALL_AND_STICK -> "Balls"
+                                    VisualizationMode.SPACE_FILL -> "Fill"
                                     VisualizationMode.STICKS_ONLY -> "Sticks"
-                                    VisualizationMode.WIREFRAME -> "Wireframe"
+                                    VisualizationMode.WIREFRAME -> "Wire"
                                 }
                             )
                         },

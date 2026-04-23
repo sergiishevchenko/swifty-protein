@@ -666,21 +666,30 @@ private fun MoleculeViewer(
     }
 
     LaunchedEffect(selectedAtom?.id) {
+        val selected = selectedAtom
+        val selectedElement = selected?.element?.uppercase()?.trim()
         for (entry in atomNodeMap) {
             val node = entry.key
             val atom = entry.value
-            val isSelected = selectedAtom != null && atom.id == selectedAtom.id
+            val isSelected = selected != null && atom.id == selected.id
+            val isSameElement = selectedElement != null &&
+                atom.element.uppercase().trim() == selectedElement
             val base = com.music42.swiftyprotein.util.CpkColors.getColor(atom.element)
-            val color = if (isSelected) {
-                val t = 0.45f
-                Color(
-                    base.red + (1f - base.red) * t,
-                    base.green + (1f - base.green) * t,
-                    base.blue + (1f - base.blue) * t,
-                    1f
-                )
-            } else {
-                base
+            val color = when {
+                isSelected -> {
+                    val t = 0.45f
+                    Color(
+                        base.red + (1f - base.red) * t,
+                        base.green + (1f - base.green) * t,
+                        base.blue + (1f - base.blue) * t,
+                        1f
+                    )
+                }
+                isSameElement -> {
+                    val f = 0.55f
+                    Color(base.red * f, base.green * f, base.blue * f, 1f)
+                }
+                else -> base
             }
             runCatching {
                 node.materialInstance = materialLoader.createColorInstance(

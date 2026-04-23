@@ -407,9 +407,9 @@ fun ProteinViewScreen(
                             }
                         }
 
-                        androidx.compose.ui.window.Popup(alignment = Alignment.BottomEnd) {
+                        androidx.compose.ui.window.Popup(alignment = Alignment.TopStart) {
                             Column(
-                                modifier = Modifier.padding(end = 8.dp, bottom = 100.dp),
+                                modifier = Modifier.padding(start = 8.dp, top = 8.dp),
                                 horizontalAlignment = Alignment.CenterHorizontally
                             ) {
                                 Card(
@@ -1041,8 +1041,8 @@ private fun MoleculeViewer(
                     selectedAtomIds = measurementAtomIds,
                     onClear = onClearMeasurement,
                     modifier = Modifier
-                        .padding(start = 10.dp, bottom = 10.dp, end = 60.dp)
-                        .widthIn(max = 280.dp)
+                        .fillMaxWidth()
+                        .padding(start = 10.dp, end = 10.dp, bottom = 10.dp)
                 )
             }
         }

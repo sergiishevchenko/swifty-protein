@@ -42,6 +42,7 @@ import androidx.compose.material.icons.filled.Straighten
 import androidx.compose.material.icons.filled.Remove
 import androidx.compose.material.icons.filled.Videocam
 import androidx.compose.material.icons.filled.Share
+import androidx.compose.material.icons.filled.Logout
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
@@ -106,10 +107,13 @@ import kotlinx.coroutines.launch
 fun ProteinViewScreen(
     ligandId: String,
     onBack: () -> Unit,
+    currentUsername: String?,
+    onLogout: () -> Unit,
     viewModel: ProteinViewViewModel = hiltViewModel()
 ) {
     val uiState by viewModel.uiState.collectAsState()
     val context = LocalContext.current
+    val accentGreen = Color(0xFF4CAF50)
     val sceneTint = if (MaterialTheme.colorScheme.background.red < 0.4f) {
         Color(0xFF151A20)
     } else {
@@ -179,12 +183,24 @@ fun ProteinViewScreen(
                     }
                 },
                 actions = {
+                    if (!currentUsername.isNullOrBlank()) {
+                        Text(
+                            text = currentUsername,
+                            style = MaterialTheme.typography.labelLarge,
+                            fontWeight = FontWeight.SemiBold,
+                            color = accentGreen,
+                            modifier = Modifier.padding(horizontal = 6.dp)
+                        )
+                    }
+                    IconButton(onClick = onLogout) {
+                        Icon(Icons.Default.Logout, contentDescription = "Logout")
+                    }
                 },
                 colors = TopAppBarDefaults.topAppBarColors(
                     containerColor = MaterialTheme.colorScheme.surface,
-                    navigationIconContentColor = MaterialTheme.colorScheme.primary,
-                    actionIconContentColor = MaterialTheme.colorScheme.primary,
-                    titleContentColor = MaterialTheme.colorScheme.onSurface
+                    navigationIconContentColor = accentGreen,
+                    actionIconContentColor = accentGreen,
+                    titleContentColor = accentGreen
                 )
             )
         }

@@ -15,6 +15,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.Logout
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.Remove
 import androidx.compose.material3.Card
@@ -38,6 +39,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
@@ -55,9 +57,12 @@ import kotlin.math.hypot
 @Composable
 fun CompareScreen(
     onBack: () -> Unit,
+    currentUsername: String?,
+    onLogout: () -> Unit,
     viewModel: CompareViewModel = hiltViewModel()
 ) {
     val uiState by viewModel.uiState.collectAsState()
+    val accentGreen = Color(0xFF4CAF50)
 
     Scaffold(
         topBar = {
@@ -68,8 +73,25 @@ fun CompareScreen(
                         Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
                     }
                 },
+                actions = {
+                    if (!currentUsername.isNullOrBlank()) {
+                        Text(
+                            text = currentUsername,
+                            style = MaterialTheme.typography.labelLarge,
+                            fontWeight = FontWeight.SemiBold,
+                            color = accentGreen,
+                            modifier = Modifier.padding(horizontal = 6.dp)
+                        )
+                    }
+                    IconButton(onClick = onLogout) {
+                        Icon(Icons.Default.Logout, contentDescription = "Logout")
+                    }
+                },
                 colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = MaterialTheme.colorScheme.surface
+                    containerColor = MaterialTheme.colorScheme.surface,
+                    navigationIconContentColor = accentGreen,
+                    actionIconContentColor = accentGreen,
+                    titleContentColor = accentGreen
                 )
             )
         }

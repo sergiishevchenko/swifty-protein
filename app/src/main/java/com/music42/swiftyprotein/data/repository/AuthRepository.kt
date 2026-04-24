@@ -85,6 +85,10 @@ class AuthRepository @Inject constructor(
         return secureStorage.getBiometricUsername()
     }
 
+    fun logout() {
+        secureStorage.clearAuth()
+    }
+
     suspend fun userExists(username: String): Boolean {
         return userDao.findByUsername(username) != null
     }

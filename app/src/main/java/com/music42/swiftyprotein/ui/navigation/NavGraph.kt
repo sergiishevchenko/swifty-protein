@@ -19,6 +19,7 @@ import com.music42.swiftyprotein.ui.proteinlist.ProteinListScreen
 import com.music42.swiftyprotein.ui.proteinview.ProteinViewScreen
 import com.music42.swiftyprotein.ui.settings.SettingsScreen
 import com.music42.swiftyprotein.ui.settings.SettingsViewModel
+import com.music42.swiftyprotein.ui.session.SessionViewModel
 
 @Composable
 fun SwiftyProteinNavHost(
@@ -26,6 +27,9 @@ fun SwiftyProteinNavHost(
     onLoginShown: () -> Unit,
     navController: NavHostController = rememberNavController()
 ) {
+    val sessionViewModel: SessionViewModel = hiltViewModel()
+    val username by sessionViewModel.username.collectAsState()
+
     LaunchedEffect(shouldShowLogin) {
         if (shouldShowLogin) {
             navController.navigate(Screen.Login.route) {
@@ -44,6 +48,7 @@ fun SwiftyProteinNavHost(
             val settings by settingsViewModel.settings.collectAsState()
             LoginScreen(
                 onLoginSuccess = {
+                    sessionViewModel.refresh()
                     val next = if (settings.onboardingCompleted) {
                         Screen.ProteinList.route
                     } else {
@@ -76,6 +81,11 @@ fun SwiftyProteinNavHost(
                 },
                 onOpenSettings = {
                     navController.navigate(Screen.Settings.route)
+                },
+                currentUsername = username,
+                onLogout = {
+                    sessionViewModel.logout()
+                    navController.navigate(Screen.Login.route) { popUpTo(0) { inclusive = true } }
                 }
             )
         }
@@ -88,6 +98,11 @@ fun SwiftyProteinNavHost(
                 },
                 onCompareSelected = { a, b ->
                     navController.navigate(Screen.Compare.createRoute(a, b))
+                },
+                currentUsername = username,
+                onLogout = {
+                    sessionViewModel.logout()
+                    navController.navigate(Screen.Login.route) { popUpTo(0) { inclusive = true } }
                 }
             )
         }
@@ -99,11 +114,25 @@ fun SwiftyProteinNavHost(
                 navArgument("ligandB") { type = NavType.StringType }
             )
         ) {
-            CompareScreen(onBack = { navController.popBackStack() })
+            CompareScreen(
+                onBack = { navController.popBackStack() },
+                currentUsername = username,
+                onLogout = {
+                    sessionViewModel.logout()
+                    navController.navigate(Screen.Login.route) { popUpTo(0) { inclusive = true } }
+                }
+            )
         }
 
         composable(Screen.Settings.route) {
-            SettingsScreen(onBack = { navController.popBackStack() })
+            SettingsScreen(
+                onBack = { navController.popBackStack() },
+                currentUsername = username,
+                onLogout = {
+                    sessionViewModel.logout()
+                    navController.navigate(Screen.Login.route) { popUpTo(0) { inclusive = true } }
+                }
+            )
         }
 
         composable(
@@ -113,7 +142,12 @@ fun SwiftyProteinNavHost(
             val ligandId = backStackEntry.arguments?.getString("ligandId") ?: return@composable
             ProteinViewScreen(
                 ligandId = ligandId,
-                onBack = { navController.popBackStack() }
+                onBack = { navController.popBackStack() },
+                currentUsername = username,
+                onLogout = {
+                    sessionViewModel.logout()
+                    navController.navigate(Screen.Login.route) { popUpTo(0) { inclusive = true } }
+                }
             )
         }
     }

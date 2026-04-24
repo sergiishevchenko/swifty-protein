@@ -17,6 +17,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.CompareArrows
 import androidx.compose.material.icons.filled.OpenInNew
+import androidx.compose.material.icons.filled.Logout
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -47,10 +48,13 @@ fun FavoritesScreen(
     onBack: () -> Unit,
     onLigandSelected: (String) -> Unit,
     onCompareSelected: (String, String) -> Unit,
+    currentUsername: String?,
+    onLogout: () -> Unit,
     viewModel: FavoritesViewModel = hiltViewModel()
 ) {
     val favorites by viewModel.favoriteLigandIds.collectAsState()
     var selectedForCompare by remember { mutableStateOf(setOf<String>()) }
+    val accentGreen = Color(0xFF4CAF50)
 
     Scaffold(
         topBar = {
@@ -76,9 +80,24 @@ fun FavoritesScreen(
                             tint = if (canCompare) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant
                         )
                     }
+                    if (!currentUsername.isNullOrBlank()) {
+                        Text(
+                            text = currentUsername,
+                            style = MaterialTheme.typography.labelLarge,
+                            fontWeight = FontWeight.SemiBold,
+                            color = accentGreen,
+                            modifier = Modifier.padding(horizontal = 6.dp)
+                        )
+                    }
+                    IconButton(onClick = onLogout) {
+                        Icon(Icons.Default.Logout, contentDescription = "Logout")
+                    }
                 },
                 colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = MaterialTheme.colorScheme.surface
+                    containerColor = MaterialTheme.colorScheme.surface,
+                    navigationIconContentColor = accentGreen,
+                    actionIconContentColor = accentGreen,
+                    titleContentColor = accentGreen
                 )
             )
         }

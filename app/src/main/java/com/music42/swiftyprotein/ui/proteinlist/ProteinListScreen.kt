@@ -22,6 +22,7 @@ import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.filled.Star
 import androidx.compose.material.icons.filled.StarBorder
+import androidx.compose.material.icons.filled.Logout
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
@@ -58,9 +59,12 @@ fun ProteinListScreen(
     onLigandSelected: (String) -> Unit,
     onOpenFavorites: () -> Unit,
     onOpenSettings: () -> Unit,
+    currentUsername: String?,
+    onLogout: () -> Unit,
     viewModel: ProteinListViewModel = hiltViewModel()
 ) {
     val uiState by viewModel.uiState.collectAsState()
+    val accentGreen = Color(0xFF4CAF50)
 
     LaunchedEffect(uiState.navigateToLigand) {
         uiState.navigateToLigand?.let { ligandId ->
@@ -80,9 +84,24 @@ fun ProteinListScreen(
                     IconButton(onClick = onOpenSettings) {
                         Icon(Icons.Default.Settings, contentDescription = "Settings")
                     }
+                    if (!currentUsername.isNullOrBlank()) {
+                        Text(
+                            text = currentUsername,
+                            style = MaterialTheme.typography.labelLarge,
+                            fontWeight = FontWeight.SemiBold,
+                            color = accentGreen,
+                            modifier = Modifier.padding(horizontal = 6.dp)
+                        )
+                    }
+                    IconButton(onClick = onLogout) {
+                        Icon(Icons.Default.Logout, contentDescription = "Logout")
+                    }
                 },
                 colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = MaterialTheme.colorScheme.surface
+                    containerColor = MaterialTheme.colorScheme.surface,
+                    navigationIconContentColor = accentGreen,
+                    actionIconContentColor = accentGreen,
+                    titleContentColor = accentGreen
                 )
             )
         }

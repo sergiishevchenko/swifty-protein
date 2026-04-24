@@ -36,6 +36,13 @@ class SecureStorage(
         return prefs.getString(KEY_BIOMETRIC_USERNAME, null)
     }
 
+    fun clearAuth() {
+        prefs.edit()
+            .remove(KEY_LAST_USERNAME)
+            .remove(KEY_BIOMETRIC_USERNAME)
+            .apply()
+    }
+
     companion object {
         private const val KEY_LAST_USERNAME = "last_username"
         private const val KEY_BIOMETRIC_USERNAME = "biometric_username"

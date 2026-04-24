@@ -17,7 +17,6 @@ import android.view.MotionEvent
 import android.view.PixelCopy
 import android.hardware.display.DisplayManager
 import android.hardware.display.VirtualDisplay
-import android.util.Log
 import androidx.core.content.ContextCompat
 import com.music42.swiftyprotein.MainActivity
 import androidx.compose.foundation.background
@@ -324,7 +323,6 @@ fun ProteinViewScreen(
                     LaunchedEffect(uiState.ligandId, uiState.ligand?.atoms?.size, uiState.ligand?.bonds?.size) {
                         val a = uiState.ligand?.atoms?.size ?: -1
                         val b = uiState.ligand?.bonds?.size ?: -1
-                        Log.i("SwiftyProtein", "ProteinView ready id=${uiState.ligandId} atoms=$a bonds=$b")
                     }
                     Box(
                         modifier = Modifier
@@ -880,9 +878,7 @@ private fun MoleculeViewer(
             centerOffset = Float3(0f, 0f, 0f)
         )
     }
-    LaunchedEffect(ligand.id, mode, atomNodeMap.size) {
-        Log.i("SwiftyProtein", "Scene built id=${ligand.id} mode=$mode nodes=${atomNodeMap.size}")
-    }
+    LaunchedEffect(ligand.id, mode, atomNodeMap.size) {}
 
     LaunchedEffect(selectedAtom?.id) {
         val selected = selectedAtom
@@ -1186,7 +1182,6 @@ private fun MoleculeViewer(
                         1f
                     )
                 }
-                Log.i("SwiftyProtein", "SceneView created w=$width h=$height")
             },
             onViewUpdated = {
                 onSceneViewForScreenshot(this)
@@ -1201,7 +1196,6 @@ private fun MoleculeViewer(
             onFrame = {
                 if (!firstFrameLogged[0]) {
                     firstFrameLogged[0] = true
-                    Log.i("SwiftyProtein", "First frame")
                 }
                 val p = cameraNode.position
                 lastCameraVector[0] = p.x
@@ -1504,7 +1498,6 @@ private class ScreenRecorder(
 
         val cb = object : MediaProjection.Callback() {
             override fun onStop() {
-                Log.i("ScreenRecorder", "MediaProjection stopped")
             }
         }
         projectionCallback = cb
@@ -1527,7 +1520,6 @@ private class ScreenRecorder(
     fun stop(): File {
         if (started) {
             runCatching { recorder?.stop() }.onFailure {
-                Log.e("ScreenRecorder", "MediaRecorder.stop failed", it)
             }
         }
         runCatching { recorder?.release() }

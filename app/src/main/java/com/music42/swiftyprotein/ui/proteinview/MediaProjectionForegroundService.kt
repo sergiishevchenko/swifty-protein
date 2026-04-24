@@ -7,7 +7,6 @@ import android.app.Service
 import android.content.Context
 import android.content.Intent
 import android.content.pm.ServiceInfo
-import android.util.Log
 import android.os.Build
 import android.os.IBinder
 import androidx.core.app.NotificationCompat
@@ -18,7 +17,6 @@ class MediaProjectionForegroundService : Service() {
 
     override fun onCreate() {
         super.onCreate()
-        Log.i("MediaProjectionFGS", "onCreate")
         ensureChannel()
         try {
             val notification = buildNotification()
@@ -32,13 +30,11 @@ class MediaProjectionForegroundService : Service() {
                 startForeground(NOTIFICATION_ID, notification)
             }
         } catch (t: Throwable) {
-            Log.e("MediaProjectionFGS", "startForeground failed", t)
             stopSelf()
         }
     }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
-        Log.i("MediaProjectionFGS", "onStartCommand")
         return START_NOT_STICKY
     }
 

@@ -61,10 +61,22 @@ class ProteinListViewModel @Inject constructor(
 
     fun onSearchQueryChange(query: String) {
         _uiState.update { state ->
-            val filtered = if (query.isBlank()) {
+            val q = query.trim()
+            val filtered = if (q.isBlank()) {
                 state.allLigands
             } else {
-                state.allLigands.filter { it.contains(query.trim(), ignoreCase = true) }
+                state.allLigands
+                    .asSequence()
+                    .mapNotNull { id ->
+                        val idx = id.indexOf(q, ignoreCase = true)
+                        if (idx >= 0) id to idx else null
+                    }
+                    .sortedWith(
+                        compareBy<Pair<String, Int>> { it.second }
+                            .thenBy { it.first }
+                    )
+                    .map { it.first }
+                    .toList()
             }
             state.copy(searchQuery = query, filteredLigands = filtered)
         }

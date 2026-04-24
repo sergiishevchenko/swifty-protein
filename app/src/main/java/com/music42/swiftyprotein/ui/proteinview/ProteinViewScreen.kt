@@ -19,6 +19,7 @@ import android.hardware.display.DisplayManager
 import android.hardware.display.VirtualDisplay
 import android.util.Log
 import androidx.core.content.ContextCompat
+import com.music42.swiftyprotein.MainActivity
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.Image
@@ -749,6 +750,7 @@ private fun shareImageFile(
             )
         }
     }
+    (context as? MainActivity)?.suppressLoginOnResume = true
     context.startActivity(Intent.createChooser(intent, chooserTitle))
 }
 
@@ -1461,6 +1463,7 @@ private fun shareVideo(context: Context, file: File, ligandId: String) {
             )
         }
     }
+    (context as? MainActivity)?.suppressLoginOnResume = true
     context.startActivity(Intent.createChooser(intent, "Share Video"))
 }
 

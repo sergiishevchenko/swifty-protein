@@ -880,32 +880,56 @@ private fun MoleculeViewer(
     }
     LaunchedEffect(ligand.id, mode, atomNodeMap.size) {}
 
-    LaunchedEffect(selectedAtom?.id) {
+    LaunchedEffect(selectedAtom?.id, measurementMode, measurementAtomIds) {
+        val measureAccent = Color(0xFFFF6A00) // vivid orange
+        val measurementAtomIdSet: Set<String> = if (measurementMode) {
+            measurementAtomIds.takeLast(3).toSet()
+        } else {
+            emptySet()
+        }
+
         val selected = selectedAtom
         val selectedElement = selected?.element?.uppercase()?.trim()
+
         for (entry in atomNodeMap) {
             val node = entry.key
             val atom = entry.value
-            val isSelected = selected != null && atom.id == selected.id
-            val isSameElement = selectedElement != null &&
-                atom.element.uppercase().trim() == selectedElement
             val base = com.music42.swiftyprotein.util.CpkColors.getColor(atom.element)
-            val color = when {
-                isSelected -> {
-                    val t = 0.45f
+
+            val color = if (measurementMode) {
+                if (measurementAtomIdSet.contains(atom.id)) {
+                    val t = 0.65f
                     Color(
-                        base.red + (1f - base.red) * t,
-                        base.green + (1f - base.green) * t,
-                        base.blue + (1f - base.blue) * t,
+                        base.red + (measureAccent.red - base.red) * t,
+                        base.green + (measureAccent.green - base.green) * t,
+                        base.blue + (measureAccent.blue - base.blue) * t,
                         1f
                     )
+                } else {
+                    base
                 }
-                isSameElement -> {
-                    val f = 0.55f
-                    Color(base.red * f, base.green * f, base.blue * f, 1f)
+            } else {
+                val isSelected = selected != null && atom.id == selected.id
+                val isSameElement = selectedElement != null &&
+                    atom.element.uppercase().trim() == selectedElement
+                when {
+                    isSelected -> {
+                        val t = 0.45f
+                        Color(
+                            base.red + (1f - base.red) * t,
+                            base.green + (1f - base.green) * t,
+                            base.blue + (1f - base.blue) * t,
+                            1f
+                        )
+                    }
+                    isSameElement -> {
+                        val f = 0.55f
+                        Color(base.red * f, base.green * f, base.blue * f, 1f)
+                    }
+                    else -> base
                 }
-                else -> base
             }
+
             runCatching {
                 node.materialInstance = materialLoader.createColorInstance(
                     color = color,

@@ -1147,12 +1147,23 @@ private fun MoleculeViewer(
                             twoFinger[1] = midX
                             twoFinger[2] = midY
 
-                            val worldPerScreenX = distance / sv.width.toFloat()
-                            val worldPerScreenY = distance / sv.height.toFloat()
+                            val camPos = cameraNode.position
+                            val forward = dev.romainguy.kotlin.math.normalize(
+                                Float3(-camPos.x, -camPos.y, -camPos.z)
+                            )
+                            val worldUp = Float3(0f, 1f, 0f)
+                            val right = dev.romainguy.kotlin.math.normalize(
+                                dev.romainguy.kotlin.math.cross(forward, worldUp)
+                            )
+                            val up = dev.romainguy.kotlin.math.cross(right, forward)
+
+                            val sensitivity = distance * 0.0015f
+                            val panDx = dx * sensitivity
+                            val panDy = dy * sensitivity
                             panOffset = Float3(
-                                panOffset.x + dx * worldPerScreenX,
-                                panOffset.y - dy * worldPerScreenY,
-                                panOffset.z
+                                panOffset.x + right.x * panDx + up.x * (-panDy),
+                                panOffset.y + right.y * panDx + up.y * (-panDy),
+                                panOffset.z + right.z * panDx + up.z * (-panDy)
                             )
                             true
                         } else {

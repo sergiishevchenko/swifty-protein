@@ -281,7 +281,8 @@ private fun SimpleMoleculeViewer(
             ligand = ligand,
             mode = VisualizationMode.BALL_AND_STICK,
             highlightElement = null,
-            centerOffset = centerOffset
+            centerOffset = centerOffset,
+            showHydrogens = false
         )
     }
 

@@ -34,6 +34,7 @@ data class ProteinViewUiState(
     val selectedBond: Bond? = null,
     val visualizationMode: VisualizationMode = VisualizationMode.BALL_AND_STICK,
     val showAtomLabels: Boolean = false,
+    val showHydrogens: Boolean = false,
     val measurementMode: Boolean = false,
     val measurementAtomIds: List<String> = emptyList(),
     val loadingStage: String = "Loading",
@@ -123,6 +124,10 @@ class ProteinViewViewModel @Inject constructor(
 
     fun setShowAtomLabels(show: Boolean) {
         _uiState.update { it.copy(showAtomLabels = show) }
+    }
+
+    fun setShowHydrogens(show: Boolean) {
+        _uiState.update { it.copy(showHydrogens = show) }
     }
 
     fun setMeasurementMode(enabled: Boolean) {

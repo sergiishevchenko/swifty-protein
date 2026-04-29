@@ -38,20 +38,27 @@ object MoleculeSceneBuilder {
     const val SPACE_FILL_BASE_SCALE = 2.5f
     const val SPACE_FILL_REF_VDW = 1.70f
 
+    private const val HYDROGEN_RADIUS_SCALE = 0.55f
+
     fun build(
         engine: Engine,
         materialLoader: MaterialLoader,
         ligand: Ligand,
         mode: VisualizationMode,
         highlightElement: String?,
-        centerOffset: Float3
+        centerOffset: Float3,
+        showHydrogens: Boolean = false
     ): Pair<Node, Map<MeshNode, Atom>> {
         val parentNode = Node(engine)
         val atomNodeMap = mutableMapOf<MeshNode, Atom>()
-        val atomsForRender = ligand.atoms.filterNot {
-            val e = it.element.uppercase().trim()
-            e == "H" || e == "D"
-        }.ifEmpty { ligand.atoms }
+        val atomsForRender = if (showHydrogens) {
+            ligand.atoms
+        } else {
+            ligand.atoms.filterNot {
+                val e = it.element.uppercase().trim()
+                e == "H" || e == "D"
+            }.ifEmpty { ligand.atoms }
+        }
         val atomById = atomsForRender.associateBy { it.id }
 
         val centerX = atomsForRender.map { it.x }.average().toFloat()
@@ -62,11 +69,12 @@ object MoleculeSceneBuilder {
 
         if (mode != VisualizationMode.STICKS_ONLY && mode != VisualizationMode.WIREFRAME) {
             for (atom in atomsForRender) {
+                val isHydrogen = atom.element.uppercase().trim().let { it == "H" || it == "D" }
                 val radius = if (mode == VisualizationMode.SPACE_FILL) {
                     val vdw = VdwRadii.radiusAngstrom(atom.element)
                     BALL_RADIUS * SPACE_FILL_BASE_SCALE * (vdw / SPACE_FILL_REF_VDW)
                 } else {
-                    BALL_RADIUS
+                    if (isHydrogen) BALL_RADIUS * HYDROGEN_RADIUS_SCALE else BALL_RADIUS
                 }
                 val base = CpkColors.getColor(atom.element)
                 val color = when {

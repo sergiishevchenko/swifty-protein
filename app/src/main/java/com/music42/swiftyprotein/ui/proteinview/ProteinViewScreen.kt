@@ -342,6 +342,7 @@ fun ProteinViewScreen(
                             onBondSelected = viewModel::onBondSelected,
                             onDismissBond = viewModel::dismissBondInfo,
                             showAtomLabels = uiState.showAtomLabels,
+                            showHydrogens = uiState.showHydrogens,
                             measurementMode = uiState.measurementMode,
                             measurementAtomIds = uiState.measurementAtomIds,
                             onMeasurementAtomTapped = viewModel::onAtomTappedForMeasurement,
@@ -481,6 +482,33 @@ fun ProteinViewScreen(
                                     modifier = Modifier.size(42.dp),
                                     shape = CircleShape,
                                     colors = CardDefaults.cardColors(
+                                        containerColor = if (uiState.showHydrogens)
+                                            MaterialTheme.colorScheme.primaryContainer
+                                        else
+                                            MaterialTheme.colorScheme.surface
+                                    ),
+                                    elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
+                                ) {
+                                    IconButton(
+                                        onClick = { viewModel.setShowHydrogens(!uiState.showHydrogens) },
+                                        modifier = Modifier.fillMaxSize()
+                                    ) {
+                                        Text(
+                                            text = "H",
+                                            style = MaterialTheme.typography.titleMedium,
+                                            fontWeight = FontWeight.Bold,
+                                            color = if (uiState.showHydrogens)
+                                                MaterialTheme.colorScheme.onPrimaryContainer
+                                            else
+                                                MaterialTheme.colorScheme.primary
+                                        )
+                                    }
+                                }
+                                Spacer(modifier = Modifier.height(8.dp))
+                                Card(
+                                    modifier = Modifier.size(42.dp),
+                                    shape = CircleShape,
+                                    colors = CardDefaults.cardColors(
                                         containerColor = MaterialTheme.colorScheme.surface
                                     ),
                                     elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
@@ -589,6 +617,17 @@ fun ProteinViewScreen(
                                     ModeBanner(
                                         text = "LABELS MODE",
                                         onClick = { viewModel.setShowAtomLabels(false) },
+                                        modifier = Modifier.padding(top = 8.dp)
+                                    )
+                                }
+                                AnimatedVisibility(
+                                    visible = uiState.showHydrogens,
+                                    enter = fadeIn(),
+                                    exit = fadeOut()
+                                ) {
+                                    ModeBanner(
+                                        text = "HYDROGENS VISIBLE",
+                                        onClick = { viewModel.setShowHydrogens(false) },
                                         modifier = Modifier.padding(top = 8.dp)
                                     )
                                 }
@@ -839,6 +878,7 @@ private fun MoleculeViewer(
     onBondSelected: (Bond?) -> Unit,
     onDismissBond: () -> Unit,
     showAtomLabels: Boolean,
+    showHydrogens: Boolean,
     measurementMode: Boolean,
     measurementAtomIds: List<String>,
     onMeasurementAtomTapped: (Atom) -> Unit,
@@ -868,14 +908,15 @@ private fun MoleculeViewer(
         }
     }
 
-    val (parentNode, atomNodeMap) = remember(ligand, mode) {
+    val (parentNode, atomNodeMap) = remember(ligand, mode, showHydrogens) {
         MoleculeSceneBuilder.build(
             engine = engine,
             materialLoader = materialLoader,
             ligand = ligand,
             mode = mode,
             highlightElement = null,
-            centerOffset = Float3(0f, 0f, 0f)
+            centerOffset = Float3(0f, 0f, 0f),
+            showHydrogens = showHydrogens
         )
     }
     LaunchedEffect(ligand.id, mode, atomNodeMap.size) {}
